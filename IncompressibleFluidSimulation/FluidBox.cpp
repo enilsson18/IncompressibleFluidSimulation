@@ -13,6 +13,8 @@
 
 using namespace std;
 
+void constrain(int &num, int min, int max);
+
 FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 	//setup(size, diffusion, viscosity, dt);
 	this->size = size;
@@ -20,7 +22,7 @@ FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 	this->visc = viscosity;
 	this->dt = dt;
 
-	this->divIter = 1;
+	this->divIter = 8;
 
 	// init 2d arrays
 	this->simDensity = vector<vector<float>>(size, vector<float>(size, 0));
@@ -43,32 +45,27 @@ void FluidBox::update() {
 
 	diffuse(simDensity, density, 0);
 	advect(0, density, simDensity, velocity->getXList(), velocity->getYList());
+
+	//std::cout << velocity->getXList()[size / 2][size / 2] << std::endl;
+	//std::cout << simDensity[size / 2][size / 2] << std::endl;
 }
 
 void FluidBox::enforceBounds(std::vector<std::vector<float>> &v, int dim) {
 	// x
 	if (dim == 1) {
 		for (int y = 1; y < v.size() - 1; y++) {
-			if (v[y][1] < 0) {
-				v[y][0] = -v[y][1];
-			}
+			v[y][0] = -v[y][1];
 
-			if (v[y][size - 2] > 0) {
-				v[y][size - 1] = -v[y][size - 2];
-			}
+			v[y][size - 1] = -v[y][size - 2];
 		}
 	}
 	
 	// y
 	if (dim == 2) {
 		for (int i = 1; i < size - 1; i++) {
-			if (v[1][i] < 0) {
-				v[0][i] = -v[1][i];
-			}
+			v[0][i] = -v[1][i];
 
-			if (v[size - 2][i] > 0) {
-				v[size - 1][i] = -v[size - 2][i];
-			}
+			v[size - 1][i] = -v[size - 2][i];
 		}
 	}
 
@@ -151,10 +148,9 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &d, std::vector<std
 
 	float Nfloat = size;
 	float ifloat, jfloat;
-	int i, j;
 
-	for (j = 1, jfloat = 1; j < size - 1; j++, jfloat++) {
-		for (i = 1, ifloat = 1; i < size - 1; i++, ifloat++) {
+	for (int j = 1, jfloat = 1; j < size - 1; j++, jfloat++) {
+		for (int i = 1, ifloat = 1; i < size - 1; i++, ifloat++) {
 			tmp1 = dtx * vx[j][i];
 			tmp2 = dty * vy[j][i];
 			x = ifloat - tmp1;
@@ -179,8 +175,13 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &d, std::vector<std
 			int j0i = int(j0);
 			int j1i = int(j1);
 
+			//constrain(i0i, 1, size - 2);
+			//constrain(i1i, 1, size - 2);
+			//constrain(j0i, 1, size - 2);
+			//constrain(j1i, 1, size - 2);
+
 			// DOUBLE CHECK THIS!!!
-			if (false && updateCount > 119 && j > 170) {
+			if (false && updateCount > 119) {
 				std::cout << j << " " << i << " " << j0i << " " << i0i << " " << j1i << " " << i1i << std::endl;
 				std::cout << j0 << " " << j1 << std::endl;
 				std::cout << y << " " << floor(y) << std::endl;
@@ -196,6 +197,24 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &d, std::vector<std
 	enforceBounds(d, b);
 
 	updateCount += 1;
+}
+
+void constrain(int &num, int min, int max) {
+	if (num < min) {
+		num = min;
+	}
+	if (num > max) {
+		num = max;
+	}
+}
+
+void constrain(float &num, float min, float max) {
+	if (num < min) {
+		num = min;
+	}
+	if (num > max) {
+		num = max;
+	}
 }
 
 void FluidBox::addDensity(glm::vec2 pos, float amount) {

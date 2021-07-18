@@ -48,11 +48,14 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 tuple<unsigned int, unsigned int> findWindowDims(float relativeScreenSize = 0.85, float aspectRatio = 1);
 void updateData(FluidBox &fluidBox, float* data);
 void updateBuffers(RenderObject* renderObject);
+void updateForces(FluidBox& fluid);
+void containTracers(FluidBox& fluid, int min, int max);
 
 int main() {
 	int gameOver = false;
 
-	FluidBox fluid = FluidBox(resolution, 0.0000001, 0.2, 0);
+	FluidBox fluid = FluidBox(resolution, 0, 0.0000001, 0.2);
+	//FluidBox fluid = FluidBox(resolution, 0, 0, 0.2);
 
 	// init graphics stuff
 	glfwInit();
@@ -94,14 +97,6 @@ int main() {
 	updateData(fluid, renderFluid->data);
 	updateBuffers(renderFluid);
 
-	for (int y = 1; y < fluid.size - 1; y++) {
-		for (int x = 1; x < fluid.size - 1; x++) {
-			fluid.addDensity(glm::vec2(x, y), 100);
-		}
-	}
-
-	//fluid.addVelocity(glm::vec2(resolution / 2.0f), glm::vec2(0.1f, 0));
-
 	std::cout << "entering main loop" << std::endl;
 
 	while (!glfwWindowShouldClose(window)) {
@@ -109,8 +104,13 @@ int main() {
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 			glfwSetWindowShouldClose(window, true);
 		}
+		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+			updateForces(fluid);
+		}
 
 		// update frame
+		containTracers(fluid, 0, 255);
+
 		fluid.update();
 		updateData(fluid, renderFluid->data);
 		updateBuffers(renderFluid);
@@ -131,6 +131,31 @@ int main() {
 	delete[] renderFluid->data;
 
 	return 0;
+}
+
+void updateForces(FluidBox& fluid){
+	int size = 5;
+
+	for (int y = -size; y < size; y++) {
+		for (int x = -size; x < size; x++) {
+			fluid.addDensity(glm::vec2(fluid.size/2 + x, fluid.size/2 + y), 10.0f * (float(std::rand())/INT_MAX + 0.5f));
+		}
+	}
+
+	fluid.addVelocity(glm::vec2(fluid.size / 2.0f), glm::vec2(2.0f, 0));
+}
+
+void containTracers(FluidBox& fluid, int min, int max) {
+	for (int y = 0; y < fluid.size; y++) {
+		for (int x = 0; x < fluid.size; x++) {
+			if (fluid.density[y][x] < min) {
+				fluid.density[y][x] = min;
+			}
+			if (fluid.density[y][x] > max) {
+				fluid.density[y][x] = max;
+			}
+		}
+	}
 }
 
 void updateData(FluidBox &fluidBox, float* data) {
