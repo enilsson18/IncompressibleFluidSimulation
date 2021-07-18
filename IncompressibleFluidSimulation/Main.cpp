@@ -7,6 +7,7 @@
 
 #include <tuple>
 #include <windows.h>
+#include <chrono>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,7 +19,56 @@
 using namespace std;
 
 // settings
-int resolution = 600;
+const int resolution = 300;
+const double fps = 60;
+
+struct FPSCounter {
+	std::chrono::system_clock::time_point now;
+	int fpsCount;
+	int fpsCounter;
+
+	int updateInterval = 60;
+
+	int storedFPS;
+
+	FPSCounter() {
+		fpsCount = 0;
+		fpsCounter = 0;
+		storedFPS = 0;
+	}
+
+	void start() {
+		now = std::chrono::system_clock::now();
+	}
+
+	void end() {
+		//end of timer sleep and normalize the clock
+		std::chrono::system_clock::time_point after = std::chrono::system_clock::now();
+		std::chrono::microseconds difference(std::chrono::time_point_cast<std::chrono::microseconds>(after) - std::chrono::time_point_cast<std::chrono::microseconds>(now));
+
+		int diffCount = difference.count();
+		if (diffCount == 0) {
+			diffCount = 1;
+		}
+
+		// apply fps to average
+		fpsCount += 1;
+		fpsCounter += 1000000 / diffCount;
+
+		if (fpsCount % int(updateInterval) == 0) {
+			storedFPS = fpsCounter / fpsCount;
+
+			fpsCount = 0;
+			fpsCounter = 0;
+		}
+	}
+
+	void printFPS(bool sameLine = false) {
+		if (sameLine) { std::cout << "\r"; }
+		std::cout << "FPS: " << storedFPS;
+		if (sameLine) { std::cout << std::endl; }
+	}
+};
 
 struct RenderObject {
 	Shader shader;
@@ -97,9 +147,13 @@ int main() {
 	updateData(fluid, renderFluid->data);
 	updateBuffers(renderFluid);
 
+	FPSCounter timer = FPSCounter();
+
 	std::cout << "entering main loop" << std::endl;
 
 	while (!glfwWindowShouldClose(window)) {
+		timer.start();
+
 		// process input
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 			glfwSetWindowShouldClose(window, true);
@@ -126,7 +180,11 @@ int main() {
 		// update view
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+
+		timer.end();
+		timer.printFPS(true);
 	}
+
 	glfwTerminate();
 	delete[] renderFluid->data;
 
@@ -138,7 +196,7 @@ void updateForces(FluidBox& fluid){
 
 	for (int y = -size; y < size; y++) {
 		for (int x = -size; x < size; x++) {
-			fluid.addDensity(glm::vec2(fluid.size/2 + x, fluid.size/2 + y), 10.0f * (float(std::rand())/INT_MAX + 0.5f));
+			fluid.addDensity(glm::vec2(fluid.size/2 + x, fluid.size/2 + y), 20.0f * (float(std::rand())/INT_MAX + 0.5f));
 		}
 	}
 
