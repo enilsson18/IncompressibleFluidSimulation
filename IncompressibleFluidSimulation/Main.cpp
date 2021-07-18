@@ -18,7 +18,7 @@
 using namespace std;
 
 // settings
-int resolution = 300;
+int resolution = 600;
 
 struct RenderObject {
 	Shader shader;
@@ -65,8 +65,8 @@ int main() {
 
 	std::tie(width, height) = findWindowDims();
 
-	width = 300;
-	height = 300;
+	width = resolution;
+	height = resolution;
 
 	// glfw window creation
 	GLFWwindow* window = glfwCreateWindow(width, height, "Fluid Sim", NULL, NULL);
@@ -89,7 +89,7 @@ int main() {
 
 	RenderObject* renderFluid = new RenderObject();
 	renderFluid->shader = Shader("resources/shaders/point_render.vs", "resources/shaders/point_render.fs");
-	renderFluid->allocateMemory(resolution * resolution * (2 + 3) - 4 - resolution * 4);
+	renderFluid->allocateMemory((resolution * resolution - 4 - resolution * 4) * (2 + 3));
 
 	updateData(fluid, renderFluid->data);
 	updateBuffers(renderFluid);
@@ -102,7 +102,7 @@ int main() {
 
 	//fluid.addVelocity(glm::vec2(resolution / 2.0f), glm::vec2(0.1f, 0));
 
-	std::cout << "entering main loop" << sizeof(*renderFluid->data) / sizeof(float)<< std::endl;
+	std::cout << "entering main loop" << std::endl;
 
 	while (!glfwWindowShouldClose(window)) {
 		// process input
@@ -139,12 +139,12 @@ void updateData(FluidBox &fluidBox, float* data) {
 		for (int x = 1; x < fluidBox.size-1; x++) {
 			data[index] = float(x) / fluidBox.size;
 			data[index + 1] = float(y) / fluidBox.size;
-			data[index + 2] = 0;
-			data[index + 3] = 0;
-			data[index + 4] = 0;
-			//data[index + 2] = fluidBox.density[y][x] / 255.0f;
-			//data[index + 3] = fluidBox.density[y][x] / 255.0f;
-			//data[index + 4] = fluidBox.density[y][x] / 255.0f;
+			//data[index + 2] = 0;
+			//data[index + 3] = 0;
+			//data[index + 4] = 0;
+			data[index + 2] = fluidBox.density[y][x] / 255.0f;
+			data[index + 3] = fluidBox.density[y][x] / 255.0f;
+			data[index + 4] = fluidBox.density[y][x] / 255.0f;
 			//data[index + 2] = std::fmod(fluidBox.density[y][x] + 50, 200.0f) / 255.0f;
 			//data[index + 3] = 200 / 255.0f;
 			//data[index + 4] = fluidBox.density[y][x] / 255.0f;
