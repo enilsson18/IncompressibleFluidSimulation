@@ -63,4 +63,5 @@ public:
 
 	void addDensity(glm::vec2 pos, float amount);
 	void addVelocity(glm::vec2 pos, glm::vec2 amount);
+	void fadeDensity(float increment, float min, float max);
 };

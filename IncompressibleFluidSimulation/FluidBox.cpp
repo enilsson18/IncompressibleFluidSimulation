@@ -22,7 +22,7 @@ FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 	this->visc = viscosity;
 	this->dt = dt;
 
-	this->divIter = 8;
+	this->divIter = 4;
 
 	// init 2d arrays
 	this->simDensity = vector<vector<float>>(size, vector<float>(size, 0));
@@ -175,10 +175,10 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &d, std::vector<std
 			int j0i = int(j0);
 			int j1i = int(j1);
 
-			//constrain(i0i, 1, size - 2);
-			//constrain(i1i, 1, size - 2);
-			//constrain(j0i, 1, size - 2);
-			//constrain(j1i, 1, size - 2);
+			constrain(i0i, 1, size - 2);
+			constrain(i1i, 1, size - 2);
+			constrain(j0i, 1, size - 2);
+			constrain(j1i, 1, size - 2);
 
 			// DOUBLE CHECK THIS!!!
 			if (false && updateCount > 119) {
@@ -217,11 +217,51 @@ void constrain(float &num, float min, float max) {
 	}
 }
 
+bool constrainVec(glm::vec2& vec, float min, float max) {
+	bool toReturn = false;
+
+	if (vec.x < min) {
+		vec.x = min;
+		toReturn = true;
+	}
+	if (vec.y < min) {
+		vec.y = min;
+		toReturn = true;
+	}
+	if (vec.x > max) {
+		vec.x = max;
+		toReturn = true;
+	}
+	if (vec.y > max) {
+		vec.y = max;
+		toReturn = true;
+	}
+
+	return toReturn;
+}
+
 void FluidBox::addDensity(glm::vec2 pos, float amount) {
+	if (constrainVec(pos, 1, size - 2)) {
+		return;
+	}
+
 	density[pos.y][pos.x] += amount;
 }
 
 void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
+	if (constrainVec(pos, 1, size - 2)) {
+		return;
+	}
+
 	velocity->getXList()[pos.y][pos.x] += amount.x;
 	velocity->getYList()[pos.y][pos.x] += amount.y;
+}
+
+void FluidBox::fadeDensity(float increment, float min, float max) {
+	for (int y = 0; y < size; y++) {
+		for (int x = 0; x < size; x++) {
+			density[y][x] -= increment;
+			constrain(density[y][x], min, max);
+		}
+	}
 }
