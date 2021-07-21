@@ -27,6 +27,7 @@ FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 	// init 2d arrays
 	this->simDensity = vector<vector<float>>(size, vector<float>(size, 0));
 	this->density = vector<vector<float>>(size, vector<float>(size, 0));
+	this->colorTracers = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
 	this->velocityPrev = new DynamicVector(size, size);
 	this->velocity = new DynamicVector(size, size);
 };
@@ -45,6 +46,10 @@ void FluidBox::update() {
 
 	diffuse(simDensity, density, 0);
 	advect(0, density, simDensity, velocity->getXList(), velocity->getYList());
+
+	for (int i = 0; i < 3; i++) {
+		advect(0, colorTracers[i], simDensity, velocity->getXList(), velocity->getYList());
+	}
 
 	//std::cout << velocity->getXList()[size / 2][size / 2] << std::endl;
 	//std::cout << simDensity[size / 2][size / 2] << std::endl;
@@ -240,10 +245,14 @@ bool constrainVec(glm::vec2& vec, float min, float max) {
 	return toReturn;
 }
 
-void FluidBox::addDensity(glm::vec2 pos, float amount) {
+void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color) {
 	if (constrainVec(pos, 1, size - 2)) {
 		return;
 	}
+
+	colorTracers[0][pos.y][pos.x] = color.x;
+	colorTracers[1][pos.y][pos.x] = color.y;
+	colorTracers[2][pos.y][pos.x] = color.z;
 
 	density[pos.y][pos.x] += amount;
 }
@@ -258,10 +267,31 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
 }
 
 void FluidBox::fadeDensity(float increment, float min, float max) {
+	int checkInterval = size / 60;
+	float densityMultiplier = 10.0f / 255.0f;
+
+	float avgDensity = 0;
+	for (int y = 0; y < size; y += checkInterval) {
+		for (int x = 0; x < size; x += checkInterval) {
+			avgDensity += density[y][x];
+		}
+	}
+	avgDensity /= (size / checkInterval)*(size / checkInterval);
+
+	float densityIncrement = increment * (avgDensity * densityMultiplier);
+
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
-			density[y][x] -= increment;
+			density[y][x] -= densityIncrement;
 			constrain(density[y][x], min, max);
 		}
 	}
+}
+
+glm::vec3 FluidBox::getColorAtPos(glm::vec2 pos) {
+	glm::vec3 output;
+	output.x = colorTracers[0][pos.y][pos.x];
+	output.y = colorTracers[1][pos.y][pos.x];
+	output.z = colorTracers[2][pos.y][pos.x];
+	return output;
 }

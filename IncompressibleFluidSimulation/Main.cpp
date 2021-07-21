@@ -26,11 +26,12 @@ const double fps = 60;
 int SCR_HEIGHT;
 int SCR_WIDTH;
 
-enum ControlMode { NONE = 0, DIRECTIONAL = 1, MOUSE_SWIPE = 2, MOUSE_CLICK = 3 };
+enum ControlMode { NONE = 0, DIRECTIONAL = 1, MOUSE_SWIPE = 2, MOUSE_CLICK_BLOP = 3 };
 
 struct MouseData {
 	bool pressedL;
 	bool pressedR;
+	bool dragging;
 
 	//glm::vec2 pressPos;
 	//glm::vec2 releasePos;
@@ -124,7 +125,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 // fluid modifiers
-void addDirectionalFluid(FluidBox& fluid, int brushSize = 5, float densityInc = 20.0f, float velocityInc = 0.01f, glm::vec2 pos = glm::vec2(100.0f, 100.0f), glm::vec2 dir = glm::vec2(1.0f, 0.0f));
+void addDirectionalFluid(FluidBox& fluid, int brushSize = 5, float densityInc = 20.0f, float velocityInc = 0.01f, glm::vec2 pos = glm::vec2(100.0f, 100.0f), glm::vec2 dir = glm::vec2(1.0f, 0.0f), glm::vec3 color = glm::vec3(255));
+void addMouseSwipeFluid();
+void addBlop(glm::vec2 pos, int radius, float densityInc, float velocityInc);
+void addMouseClickBlop();
 
 // functions
 void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode);
@@ -150,10 +154,19 @@ RenderObject* renderFluid;
 ControlMode controlMode;
 bool freeze;
 
+int colorIndex;
+glm::vec3 colorList[] = {
+	glm::vec3(255,0,0),
+	glm::vec3(0,255,0),
+	glm::vec3(0,0,255)
+};
+
 void setup() {
-	fluid = new FluidBox(resolution, 0, 0.0000001, 0.2);
+	fluid = new FluidBox(resolution, 0.1f, 0.0000001f, 0.2f);
 	controlMode = ControlMode::MOUSE_SWIPE;
 	freeze = false;
+
+	colorIndex = 0;
 
 	// init graphics stuff
 	glfwInit();
@@ -234,7 +247,7 @@ int main() {
 		glfwPollEvents();
 
 		timer.end();
-		//timer.printFPS(true);
+		timer.printFPS(true);
 	}
 
 	glfwTerminate();
@@ -247,13 +260,27 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	// process mouse input
 	if (mouse.pressedL) {
 		if (controlMode == ControlMode::MOUSE_SWIPE) {
-			glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
-			float mouseDiff = glm::length((mouse.currentPos - mouse.lastPos) * scaling);
-			addDirectionalFluid(fluid, 10, 20.0f * (mouseDiff / 4.0f), 0.01f * (mouseDiff / 10.0f), mouse.currentPos * scaling, (mouse.currentPos - mouse.lastPos) * scaling);
+			addMouseSwipeFluid();
+		}
+		if (controlMode == ControlMode::MOUSE_CLICK_BLOP) {
+			addMouseClickBlop();
 		}
 	}
 
+	if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+		colorIndex = (colorIndex + 1) % (sizeof(colorList) / sizeof(glm::vec3));
+	}
+
+
 	// process key input
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+		
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		
+	}
+
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
@@ -284,16 +311,56 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	}
 }
 
-void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float velocityInc, glm::vec2 pos, glm::vec2 dir){
+void addMouseClickBlop() {
+	glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
+	addBlop(mouse.currentPos * scaling, 1, 20.0f, 0.01f * 0.15f);
+}
+
+void addBlop(glm::vec2 pos, int radius, float densityInc, float velocityInc) {
 	constrain(densityInc, 0, 50);
+	//constrain(velocityInc, 0, 0.15);
+
+	for (int y = -radius; y < radius; y++) {
+		for (int x = -radius; x < radius; x++) {
+			// make a circle for the density and velocity to be added
+			if (glm::length(glm::vec2(x, y)) <= radius) {
+				glm::vec2 cpos = glm::vec2(pos.x + x, pos.y + y);
+				glm::vec2 dir = glm::normalize(glm::vec2(x, y));
+
+				std::cout << glm::to_string(cpos) << std::endl;
+
+				// skip if the pos is out of bounds
+				if (!constrainVec(cpos, 1, (*fluid).size - 2)) {
+					(*fluid).addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f));
+					(*fluid).addVelocity(cpos, velocityInc * dir);
+					std::cout << glm::to_string(velocityInc * dir) << " " << densityInc * (float(std::rand()) / INT_MAX + 0.5f) << std::endl;
+				}
+			}
+		}
+	}
+}
+
+void addMouseSwipeFluid() {
+	glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
+	float mouseDiff = glm::length((mouse.currentPos - mouse.lastPos) * scaling);
+	float densityInc = 20.0f * (mouseDiff / 4.0f);
+	addDirectionalFluid(*fluid, 10, densityInc, 0.025f * (mouseDiff / 10.0f), mouse.currentPos * scaling, (mouse.currentPos - mouse.lastPos) * scaling, colorList[colorIndex]);
+}
+
+void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float velocityInc, glm::vec2 pos, glm::vec2 dir, glm::vec3 color){
+	constrain(densityInc, 0, 50);
+	constrain(velocityInc, 0, 0.15);
+
+	dir = glm::normalize(dir);
 
 	for (int y = -brushSize; y < brushSize; y++) {
 		for (int x = -brushSize; x < brushSize; x++) {
+			// make a circle for the density and velocity to be added
 			if (glm::length(glm::vec2(x, y)) <= brushSize) {
 				glm::vec2 cpos = glm::vec2(pos.x + x, pos.y + y);
 				// skip if the pos is out of bounds
 				if (!constrainVec(cpos, 1, fluid.size - 2)) {
-					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f));
+					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color);
 					fluid.addVelocity(cpos, velocityInc * dir);
 				}
 			}
@@ -330,9 +397,16 @@ void updateData(FluidBox &fluidBox, float* data) {
 			data[index + 3] = color;
 			data[index + 4] = color;
 
+			//float alpha = fluidBox.density[y][x] / 255.0f;
+			//glm::vec3 color = alpha * fluidBox.getColorAtPos(glm::vec2(x, y));
+			//data[index + 2] = color.x/255;
+			//data[index + 3] = color.y/255;
+			//data[index + 4] = color.z/255;
+
 			//data[index + 2] = fluidBox.density[y][x] / 255.0f;
 			//data[index + 3] = 1000 * abs(fluidBox.velocity->getXList()[y][x]) / 255.0f;
 			//data[index + 4] = 1000 * abs(fluidBox.velocity->getYList()[y][x]) / 255.0f;
+
 			//data[index + 2] = std::fmod(fluidBox.density[y][x] + 50, 200.0f) / 255.0f;
 			//data[index + 3] = 200 / 255.0f;
 			//data[index + 4] = fluidBox.density[y][x] / 255.0f;
