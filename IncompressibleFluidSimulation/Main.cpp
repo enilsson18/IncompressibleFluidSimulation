@@ -138,7 +138,7 @@ void updateData(FluidBox &fluidBox, float* data);
 void updateBuffers(RenderObject* renderObject);
 void updateForces(FluidBox& fluid);
 void containTracers(FluidBox& fluid, int min, int max);
-bool constrainVec(glm::vec2& vec, float min, float max);
+bool constrain(glm::vec2& vec, float min, float max);
 void constrain(float &num, float min, float max);
 
 // Control structs
@@ -261,6 +261,8 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	if (mouse.pressedL) {
 		if (controlMode == ControlMode::MOUSE_SWIPE) {
 			addMouseSwipeFluid();
+			glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
+			fluid.addTracer(mouse.currentPos * scaling, colorList[colorIndex]);
 		}
 		if (controlMode == ControlMode::MOUSE_CLICK_BLOP) {
 			addMouseClickBlop();
@@ -330,7 +332,7 @@ void addBlop(glm::vec2 pos, int radius, float densityInc, float velocityInc) {
 				std::cout << glm::to_string(cpos) << std::endl;
 
 				// skip if the pos is out of bounds
-				if (!constrainVec(cpos, 1, (*fluid).size - 2)) {
+				if (!constrain(cpos, 1, (*fluid).size - 2)) {
 					(*fluid).addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f));
 					(*fluid).addVelocity(cpos, velocityInc * dir);
 					std::cout << glm::to_string(velocityInc * dir) << " " << densityInc * (float(std::rand()) / INT_MAX + 0.5f) << std::endl;
@@ -359,7 +361,7 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 			if (glm::length(glm::vec2(x, y)) <= brushSize) {
 				glm::vec2 cpos = glm::vec2(pos.x + x, pos.y + y);
 				// skip if the pos is out of bounds
-				if (!constrainVec(cpos, 1, fluid.size - 2)) {
+				if (!constrain(cpos, 1, fluid.size - 2)) {
 					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color);
 					fluid.addVelocity(cpos, velocityInc * dir);
 				}
@@ -383,6 +385,9 @@ void containTracers(FluidBox& fluid, int min, int max) {
 
 void updateData(FluidBox &fluidBox, float* data) {
 	int index = 0;
+
+	vector<vector<Tracer*>> tracerMap = fluid->generateTracerMap();
+
 	for (int y = 1; y < fluidBox.size-1; y++) {
 		for (int x = 1; x < fluidBox.size-1; x++) {
 			data[index] = float(x) / fluidBox.size;
@@ -396,6 +401,12 @@ void updateData(FluidBox &fluidBox, float* data) {
 			data[index + 2] = color;
 			data[index + 3] = color;
 			data[index + 4] = color;
+
+			if (tracerMap[y][x] != nullptr) {
+				data[index + 2] = tracerMap[y][x]->color.x;
+				data[index + 3] = tracerMap[y][x]->color.y;
+				data[index + 4] = tracerMap[y][x]->color.z;
+			}
 
 			//float alpha = fluidBox.density[y][x] / 255.0f;
 			//glm::vec3 color = alpha * fluidBox.getColorAtPos(glm::vec2(x, y));

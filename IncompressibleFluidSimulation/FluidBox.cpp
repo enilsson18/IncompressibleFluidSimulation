@@ -15,7 +15,7 @@ using namespace std;
 
 void constrain(int &num, int min, int max);
 void constrain(float &num, float min, float max);
-bool constrainVec(glm::vec2& vec, float min, float max);
+bool constrain(glm::vec2& vec, float min, float max);
 
 FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 	//setup(size, diffusion, viscosity, dt);
@@ -41,17 +41,15 @@ void FluidBox::update() {
 
 	project(velocityPrev->getXList(), velocityPrev->getYList(), velocity->getXList(), velocity->getYList());
 
-	advect(1, velocityPrev->getXList(), velocityPrev->getYList(), &velocity->getXList(), &velocityPrev->getXList());
-	advect(2, velocityPrev->getXList(), velocityPrev->getYList(), &velocity->getYList(), &velocityPrev->getYList());
+	advect(1, velocityPrev->getXList(), velocityPrev->getYList(), velocity->getXList(), velocityPrev->getXList());
+	advect(2, velocityPrev->getXList(), velocityPrev->getYList(), velocity->getYList(), velocityPrev->getYList());
 
 	project(velocity->getXList(), velocity->getYList(), velocityPrev->getXList(), velocityPrev->getYList());
 
 	diffuse(simDensity, density, 0);
-	advect(0, velocity->getXList(), velocity->getYList(), &density, &simDensity);
+	advect(0, velocity->getXList(), velocity->getYList(), density, simDensity);
 
-	if (tracers.size() > 0) {
-		updateTracers();
-	}
+	updateTracers();
 
 	//std::cout << velocity->getXList()[size / 2][size / 2] << std::endl;
 	//std::cout << simDensity[size / 2][size / 2] << std::endl;
@@ -144,7 +142,7 @@ void FluidBox::project(std::vector<std::vector<float>> &vx, std::vector<std::vec
 	enforceBounds(vy, 2);
 }
 
-void FluidBox::advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> *d, std::vector<std::vector<float>> *d0,  void(FluidBox::*addProc)(float, float, float, float, int, int, int, int)) {
+void FluidBox::advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0) {
 	float i0, i1, j0, j1;
 
 	float dtx = dt * (size - 2);
@@ -187,35 +185,67 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &vx, std::vector<st
 			constrain(j0i, 1, size - 2);
 			constrain(j1i, 1, size - 2);
 
-			// if no additional function was specified then run the default average based function
-			if (addProc == nullptr) {
-				if (d != nullptr && d0 != nullptr) {
-					(*d)[j][i] =
-						s0 * (t0 * (*d0)[j0i][i0i] + t1 * (*d0)[j1i][i0i]) +
-						s1 * (t0 * (*d0)[j0i][i1i] + t1 * (*d0)[j1i][i1i]);
-				}
-			}
-			else {
-				(this->*addProc)(i0, i1, j0, j1, i0i, i1i, j0i, j1i);
-			}
+			d[j][i] =
+				s0 * (t0 * d0[j0i][i0i] + t1 * d0[j1i][i0i]) +
+				s1 * (t0 * d0[j0i][i1i] + t1 * d0[j1i][i1i]);
 		}
 	}
 
-	if (d != nullptr) {
-		enforceBounds(*d, b);
-	}
-}
-
-void FluidBox::updateTracerPos(float x0, float x, float y0, float y, int x0i, int xi, int y0i, int yi) {
-	
+	enforceBounds(d, b);
 }
 
 void FluidBox::updateTracers() {
-	advect(0, velocity->getXList(), velocity->getYList(), nullptr, nullptr, &FluidBox::updateTracerPos);
+	float i0, i1, j0, j1;
+
+	float dtx = dt * (size - 2);
+	float dty = dt * (size - 2);
+
+	float s0, s1, t0, t1;
+	float tmp1, tmp2, x, y;
+
+	float Nfloat = size;
+
+	for (int i = 0; i < tracers.size(); i++) {
+		tmp1 = dtx * velocity->getVec(tracers[i].pos).x;
+		tmp2 = dty * velocity->getVec(tracers[i].pos).y;
+		x = tracers[i].pos.x - tmp1;
+		y = tracers[i].pos.y - tmp2;
+
+		if (x < 0.5f) x = 0.5f;
+		if (x > Nfloat + 0.5f) x = Nfloat + 0.5f;
+		i0 = floor(x);
+		i1 = i0 + 1.0f;
+		if (y < 0.5f) y = 0.5f;
+		if (y > Nfloat + 0.5f) y = Nfloat + 0.5f;
+		j0 = floor(y);
+		j1 = j0 + 1.0f;
+
+		s1 = x - i0;
+		s0 = 1.0f - s1;
+		t1 = y - j0;
+		t0 = 1.0f - t1;
+
+		int i0i = int(i0);
+		int i1i = int(i1);
+		int j0i = int(j0);
+		int j1i = int(j1);
+
+		constrain(i0i, 1, size - 2);
+		constrain(i1i, 1, size - 2);
+		constrain(j0i, 1, size - 2);
+		constrain(j1i, 1, size - 2);
+
+		tracers[i].pos += tracers[i].pos - glm::vec2(i1, j1);
+		constrain(tracers[i].pos, 1, size - 2);
+	}
+}
+
+void FluidBox::addTracer(glm::vec2 pos, glm::vec3 color) {
+	tracers.push_back(Tracer(pos, color));
 }
 
 void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color) {
-	if (constrainVec(pos, 1, size - 2)) {
+	if (constrain(pos, 1, size - 2)) {
 		return;
 	}
 
@@ -223,7 +253,7 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color) {
 }
 
 void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
-	if (constrainVec(pos, 1, size - 2)) {
+	if (constrain(pos, 1, size - 2)) {
 		return;
 	}
 
@@ -257,6 +287,16 @@ glm::vec3 FluidBox::getColorAtPos(glm::vec2 pos) {
 	glm::vec3 output = glm::vec3(1);
 	
 	return output;
+}
+
+vector<vector<Tracer*>> FluidBox::generateTracerMap() {
+	vector<vector<Tracer*>> map = vector<vector<Tracer*>>(size, vector<Tracer*>(size, nullptr));
+
+	for (int i = 0; i < tracers.size(); i++) {
+		map[tracers[i].pos.y][tracers[i].pos.x] = &tracers[i];
+	}
+
+	return map;
 }
 
 // search for y row and then x if not found then return nullptr
@@ -316,7 +356,7 @@ void constrain(float &num, float min, float max) {
 	}
 }
 
-bool constrainVec(glm::vec2& vec, float min, float max) {
+bool constrain(glm::vec2& vec, float min, float max) {
 	bool toReturn = false;
 
 	if (vec.x < min) {

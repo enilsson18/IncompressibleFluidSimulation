@@ -28,11 +28,23 @@ struct DynamicVector {
 	glm::vec2 getVec(int x, int y) {
 		return glm::vec2(vector[0][y][x], vector[1][y][x]);
 	}
+
+	glm::vec2 getVec(glm::vec2 vec) {
+		int x = (int) vec.x;
+		int y = (int) vec.y;
+
+		return getVec(x, y);
+	}
 };
 
 struct Tracer {
 	glm::vec2 pos;
 	glm::vec3 color;
+
+	Tracer(glm::vec2 pos, glm::vec3 color) {
+		this->pos = pos;
+		this->color = color;
+	}
 };
 
 class FluidBox {
@@ -67,16 +79,17 @@ public:
 
 	void diffuse(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, int b);
 	void project(std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &p, std::vector<std::vector<float>> &div);
-	void advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> *d = nullptr, std::vector<std::vector<float>> *d0 = nullptr, void(FluidBox::*addProc)(float, float, float, float, int, int, int, int) = nullptr);
+	void advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0);
 
-	void updateTracerPos(float x0, float x, float y0, float y, int x0i, int xi, int y0i, int yi);
 	void updateTracers();
 
 	void fadeDensity(float increment, float min, float max);
 
-	void addTracer(glm::vec2 pos, glm::vec2 color);
+	void addTracer(glm::vec2 pos, glm::vec3 color);
 	void addDensity(glm::vec2 pos, float amount, glm::vec3 color = glm::vec3(1.0f));
 	void addVelocity(glm::vec2 pos, glm::vec2 amount);
 
 	glm::vec3 getColorAtPos(glm::vec2 pos);
+
+	std::vector<std::vector<Tracer*>> generateTracerMap();
 };
