@@ -30,6 +30,11 @@ struct DynamicVector {
 	}
 };
 
+struct Tracer {
+	glm::vec2 pos;
+	glm::vec3 color;
+};
+
 class FluidBox {
 public:
 	// settings
@@ -47,7 +52,7 @@ public:
 	std::vector<std::vector<float>> density;
 
 	// Color Tracers (Each array contains the rgb float values "0-255")
-	std::vector<std::vector<std::vector<float>>> colorTracers;
+	std::vector<Tracer> tracers;
 
 	// velocity
 	DynamicVector* velocityPrev;
@@ -62,13 +67,16 @@ public:
 
 	void diffuse(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, int b);
 	void project(std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &p, std::vector<std::vector<float>> &div);
-	void advect(int b, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy);
+	void advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> *d = nullptr, std::vector<std::vector<float>> *d0 = nullptr, void(FluidBox::*addProc)(float, float, float, float, int, int, int, int) = nullptr);
 
+	void updateTracerPos(float x0, float x, float y0, float y, int x0i, int xi, int y0i, int yi);
 	void updateTracers();
 
+	void fadeDensity(float increment, float min, float max);
+
+	void addTracer(glm::vec2 pos, glm::vec2 color);
 	void addDensity(glm::vec2 pos, float amount, glm::vec3 color = glm::vec3(1.0f));
 	void addVelocity(glm::vec2 pos, glm::vec2 amount);
-	void fadeDensity(float increment, float min, float max);
 
 	glm::vec3 getColorAtPos(glm::vec2 pos);
 };
