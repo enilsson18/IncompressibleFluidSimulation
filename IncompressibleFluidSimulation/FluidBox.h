@@ -89,6 +89,8 @@ public:
 	void addDensity(glm::vec2 pos, float amount, glm::vec3 color = glm::vec3(1.0f));
 	void addVelocity(glm::vec2 pos, glm::vec2 amount);
 
+	void clear();
+
 	glm::vec3 getColorAtPos(glm::vec2 pos);
 
 	std::vector<std::vector<Tracer*>> generateTracerMap();

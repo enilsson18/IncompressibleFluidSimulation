@@ -27,11 +27,7 @@ FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 	this->divIter = 4;
 
 	// init 2d arrays
-	this->simDensity = vector<vector<float>>(size, vector<float>(size, 0));
-	this->density = vector<vector<float>>(size, vector<float>(size, 0));
-	this->tracers = vector<Tracer>();
-	this->velocityPrev = new DynamicVector(size, size);
-	this->velocity = new DynamicVector(size, size);
+	clear();
 };
 
 // the main update step
@@ -225,17 +221,9 @@ void FluidBox::updateTracers() {
 		t1 = y - j0;
 		t0 = 1.0f - t1;
 
-		int i0i = int(i0);
-		int i1i = int(i1);
-		int j0i = int(j0);
-		int j1i = int(j1);
-
-		constrain(i0i, 1, size - 2);
-		constrain(i1i, 1, size - 2);
-		constrain(j0i, 1, size - 2);
-		constrain(j1i, 1, size - 2);
-
-		tracers[i].pos += tracers[i].pos - glm::vec2(i1, j1);
+		tracers[i].pos +=
+			s0 * (t0 * (tracers[i].pos - glm::vec2(i0, j0)) + t1 * (tracers[i].pos - glm::vec2(i0, j1))) +
+			s1 * (t0 * (tracers[i].pos - glm::vec2(i1, j0)) + t1 * (tracers[i].pos - glm::vec2(i1, j1)));
 		constrain(tracers[i].pos, 1, size - 2);
 	}
 }
@@ -259,6 +247,14 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
 
 	velocity->getXList()[pos.y][pos.x] += amount.x;
 	velocity->getYList()[pos.y][pos.x] += amount.y;
+}
+
+void FluidBox::clear() {
+	this->simDensity = vector<vector<float>>(size, vector<float>(size, 0));
+	this->density = vector<vector<float>>(size, vector<float>(size, 0));
+	this->tracers = vector<Tracer>();
+	this->velocityPrev = new DynamicVector(size, size);
+	this->velocity = new DynamicVector(size, size);
 }
 
 void FluidBox::fadeDensity(float increment, float min, float max) {

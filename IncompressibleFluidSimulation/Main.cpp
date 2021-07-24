@@ -268,9 +268,13 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 			addMouseClickBlop();
 		}
 	}
-
-	if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+	else {
 		colorIndex = (colorIndex + 1) % (sizeof(colorList) / sizeof(glm::vec3));
+	}
+
+	// clear screen controls
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+		fluid.clear();
 	}
 
 
