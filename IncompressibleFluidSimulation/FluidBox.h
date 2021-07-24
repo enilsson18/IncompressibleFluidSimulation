@@ -64,6 +64,8 @@ public:
 	void project(std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &p, std::vector<std::vector<float>> &div);
 	void advect(int b, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy);
 
+	void updateTracers();
+
 	void addDensity(glm::vec2 pos, float amount, glm::vec3 color = glm::vec3(1.0f));
 	void addVelocity(glm::vec2 pos, glm::vec2 amount);
 	void fadeDensity(float increment, float min, float max);

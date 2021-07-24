@@ -185,14 +185,6 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &d, std::vector<std
 			constrain(j0i, 1, size - 2);
 			constrain(j1i, 1, size - 2);
 
-			// DOUBLE CHECK THIS!!!
-			if (false && updateCount > 119) {
-				std::cout << j << " " << i << " " << j0i << " " << i0i << " " << j1i << " " << i1i << std::endl;
-				std::cout << j0 << " " << j1 << std::endl;
-				std::cout << y << " " << floor(y) << std::endl;
-				std::cout << jfloat << " " << tmp2 << " " << tmp1 << std::endl;
-				std::cout << dty << " " << vy[j][i] << std::endl;
-			}
 			d[j][i] =
 				s0 * (t0 * d0[j0i][i0i] + t1 * d0[j1i][i0i]) +
 				s1 * (t0 * d0[j0i][i1i] + t1 * d0[j1i][i1i]);
@@ -202,6 +194,10 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &d, std::vector<std
 	enforceBounds(d, b);
 
 	updateCount += 1;
+}
+
+void FluidBox::updateTracers() {
+
 }
 
 void constrain(int &num, int min, int max) {
