@@ -42,8 +42,11 @@ void FluidBox::update() {
 
 	project(velocity->getXList(), velocity->getYList(), velocityPrev->getXList(), velocityPrev->getYList());
 
-	diffuse(simDensity, density, 0);
-	advect(0, velocity->getXList(), velocity->getYList(), density, simDensity);
+	// applys advection for each color channel
+	for (int i = 0; i < 3; i++) {
+		diffuse(simDensity[i], density[i], 0);
+		advect(0, velocity->getXList(), velocity->getYList(), density[i], simDensity[i]);
+	}
 
 	updateTracers();
 
@@ -237,7 +240,9 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color) {
 		return;
 	}
 
-	density[pos.y][pos.x] += amount;
+	density[0][pos.y][pos.x] += amount * color.x / 255.0f;
+	density[1][pos.y][pos.x] += amount * color.y / 255.0f;
+	density[2][pos.y][pos.x] += amount * color.z / 255.0f;
 }
 
 void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
@@ -250,8 +255,8 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
 }
 
 void FluidBox::clear() {
-	this->simDensity = vector<vector<float>>(size, vector<float>(size, 0));
-	this->density = vector<vector<float>>(size, vector<float>(size, 0));
+	this->simDensity = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
+	this->density = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
 	this->tracers = vector<Tracer>();
 	this->velocityPrev = new DynamicVector(size, size);
 	this->velocity = new DynamicVector(size, size);
@@ -264,23 +269,31 @@ void FluidBox::fadeDensity(float increment, float min, float max) {
 	float avgDensity = 0;
 	for (int y = 0; y < size; y += checkInterval) {
 		for (int x = 0; x < size; x += checkInterval) {
-			avgDensity += density[y][x];
+			for (int i = 0; i < density.size(); i++) {
+				avgDensity += density[i][y][x];
+			}
 		}
 	}
-	avgDensity /= (size / checkInterval)*(size / checkInterval);
+	avgDensity /= 3 * (size / checkInterval)*(size / checkInterval);
 
 	float densityIncrement = increment * (avgDensity * densityMultiplier);
 
 	for (int y = 0; y < size; y++) {
 		for (int x = 0; x < size; x++) {
-			density[y][x] -= densityIncrement;
-			constrain(density[y][x], min, max);
+			for (int i = 0; i < density.size(); i++) {
+				density[i][y][x] -= densityIncrement;
+				constrain(density[i][y][x], min, max);
+			}
 		}
 	}
 }
 
 glm::vec3 FluidBox::getColorAtPos(glm::vec2 pos) {
 	glm::vec3 output = glm::vec3(1);
+
+	output.x = density[0][pos.y][pos.x];
+	output.y = density[1][pos.y][pos.x];
+	output.z = density[2][pos.y][pos.x];
 	
 	return output;
 }

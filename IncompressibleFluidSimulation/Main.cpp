@@ -22,6 +22,9 @@ using namespace std;
 const int resolution = 300;
 const double fps = 60;
 
+// control settings
+bool enableTracers = false;
+
 // status vars
 int SCR_HEIGHT;
 int SCR_WIDTH;
@@ -32,6 +35,9 @@ struct MouseData {
 	bool pressedL;
 	bool pressedR;
 	bool dragging;
+
+	bool prevPressedL;
+	bool prevPressedR;
 
 	//glm::vec2 pressPos;
 	//glm::vec2 releasePos;
@@ -46,6 +52,11 @@ struct MouseData {
 		//releasePos = glm::vec2(0);
 		currentPos = glm::vec2(0);
 		lastPos = glm::vec2(0);
+	}
+
+	void update() {
+		prevPressedR = pressedR;
+		prevPressedL = pressedL;
 	}
 };
 
@@ -132,6 +143,7 @@ void addMouseClickBlop();
 
 // functions
 void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode);
+glm::vec3 getColorSpect(float n, float m);
 
 tuple<unsigned int, unsigned int> findWindowDims(float relativeScreenSize = 0.85, float aspectRatio = 1);
 void updateData(FluidBox &fluidBox, float* data);
@@ -142,7 +154,7 @@ bool constrain(glm::vec2& vec, float min, float max);
 void constrain(float &num, float min, float max);
 
 // Control structs
-MouseData mouse = MouseData();
+MouseData mouse;
 
 // global stuff
 // main vars
@@ -155,18 +167,19 @@ ControlMode controlMode;
 bool freeze;
 
 int colorIndex;
-glm::vec3 colorList[] = {
-	glm::vec3(255,0,0),
-	glm::vec3(0,255,0),
-	glm::vec3(0,0,255)
-};
+int colorInc;
+int colorSpectSize;
 
 void setup() {
-	fluid = new FluidBox(resolution, 0.1f, 0.0000001f, 0.2f);
+	fluid = new FluidBox(resolution, 0.1f, 0.0000001f, 0.4f);
 	controlMode = ControlMode::MOUSE_SWIPE;
 	freeze = false;
 
 	colorIndex = 0;
+	colorInc = 1;
+	colorSpectSize = 5;
+
+	mouse = MouseData();
 
 	// init graphics stuff
 	glfwInit();
@@ -242,6 +255,8 @@ int main() {
 		glBindVertexArray(renderFluid->VAO);
 		glDrawArrays(GL_POINTS, 0, resolution * resolution);
 
+		mouse.update();
+
 		// update view
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -262,21 +277,20 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 		if (controlMode == ControlMode::MOUSE_SWIPE) {
 			addMouseSwipeFluid();
 			glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
-			fluid.addTracer(mouse.currentPos * scaling, colorList[colorIndex]);
 		}
 		if (controlMode == ControlMode::MOUSE_CLICK_BLOP) {
 			addMouseClickBlop();
 		}
 	}
-	else {
-		colorIndex = (colorIndex + 1) % (sizeof(colorList) / sizeof(glm::vec3));
+	else if (mouse.prevPressedL){
+		//colorIndex = (colorIndex + 1) % (sizeof(colorList) / sizeof(glm::vec3));
+		colorIndex = (colorIndex + colorInc) % colorSpectSize;
 	}
 
 	// clear screen controls
 	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
 		fluid.clear();
 	}
-
 
 	// process key input
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
@@ -349,8 +363,8 @@ void addBlop(glm::vec2 pos, int radius, float densityInc, float velocityInc) {
 void addMouseSwipeFluid() {
 	glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
 	float mouseDiff = glm::length((mouse.currentPos - mouse.lastPos) * scaling);
-	float densityInc = 20.0f * (mouseDiff / 4.0f);
-	addDirectionalFluid(*fluid, 10, densityInc, 0.025f * (mouseDiff / 10.0f), mouse.currentPos * scaling, (mouse.currentPos - mouse.lastPos) * scaling, colorList[colorIndex]);
+	float densityInc = 0.2f * (mouseDiff / 4.0f);
+	addDirectionalFluid(*fluid, 10, densityInc, 0.025f * (mouseDiff / 10.0f), mouse.currentPos * scaling, (mouse.currentPos - mouse.lastPos) * scaling, getColorSpect(colorIndex, colorSpectSize));
 }
 
 void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float velocityInc, glm::vec2 pos, glm::vec2 dir, glm::vec3 color){
@@ -368,6 +382,10 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 				if (!constrain(cpos, 1, fluid.size - 2)) {
 					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color);
 					fluid.addVelocity(cpos, velocityInc * dir);
+
+					if (enableTracers) {
+						fluid.addTracer(cpos, getColorSpect(colorIndex, colorSpectSize));
+					}
 				}
 			}
 		}
@@ -377,11 +395,13 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 void containTracers(FluidBox& fluid, int min, int max) {
 	for (int y = 0; y < fluid.size; y++) {
 		for (int x = 0; x < fluid.size; x++) {
-			if (fluid.density[y][x] < min) {
-				fluid.density[y][x] = min;
-			}
-			if (fluid.density[y][x] > max) {
-				fluid.density[y][x] = max;
+			for (int i = 0; i < fluid.density.size(); i++) {
+				if (fluid.density[i][y][x] < min) {
+					fluid.density[i][y][x] = min;
+				}
+				if (fluid.density[i][y][x] > max) {
+					fluid.density[i][y][x] = max;
+				}
 			}
 		}
 	}
@@ -401,15 +421,20 @@ void updateData(FluidBox &fluidBox, float* data) {
 			//data[index + 3] = 0;
 			//data[index + 4] = 0;
 			
-			float color = (fluidBox.density[y][x] / 255.0f);
-			data[index + 2] = color;
-			data[index + 3] = color;
-			data[index + 4] = color;
+			//float color = (fluidBox.density[y][x] / 255.0f);
+			//data[index + 2] = color;
+			//data[index + 3] = color;
+			//data[index + 4] = color;
+
+			glm::vec3 color = fluidBox.getColorAtPos(glm::vec2(x,y));
+			data[index + 2] = color.x;
+			data[index + 3] = color.y;
+			data[index + 4] = color.z;
 
 			if (tracerMap[y][x] != nullptr) {
-				data[index + 2] = tracerMap[y][x]->color.x;
-				data[index + 3] = tracerMap[y][x]->color.y;
-				data[index + 4] = tracerMap[y][x]->color.z;
+				data[index + 2] *= tracerMap[y][x]->color.x;
+				data[index + 3] *= tracerMap[y][x]->color.y;
+				data[index + 4] *= tracerMap[y][x]->color.z;
 			}
 
 			//float alpha = fluidBox.density[y][x] / 255.0f;
@@ -444,6 +469,22 @@ void updateBuffers(RenderObject* renderObject) {
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
 
 	glBindVertexArray(0);
+}
+
+// sinusoidal color function
+glm::vec3 getColorSpect(float n, float m) {
+	float PI = 3.14159265358979f;
+
+	float a = 5 * PI * n / (3 * m) + PI / 2;
+
+	float r = sin(a) * 192 + 128;
+	r = max(0, min(255, r));
+	float g = sin(a - 2 * PI / 3) * 192 + 128;
+	g = max(0, min(255, g));
+	float b = sin(a - 4 * PI / 3) * 192 + 128;
+	b = max(0, min(255, b));
+
+	return glm::vec3(r, g, b);
 }
 
 // finds the optimal dimensions for the window
