@@ -148,41 +148,22 @@ void FluidBox::advect(int b, std::vector<std::vector<float>> &vx, std::vector<st
 	float dty = dt * (size - 2);
 
 	float s0, s1, t0, t1;
-	float tmp1, tmp2, x, y;
 
 	float Nfloat = size;
-	float ifloat, jfloat;
 
-	for (int j = 1, jfloat = 1; j < size - 1; j++, jfloat++) {
-		for (int i = 1, ifloat = 1; i < size - 1; i++, ifloat++) {
-			tmp1 = dtx * vx[j][i];
-			tmp2 = dty * vy[j][i];
-			x = ifloat - tmp1;
-			y = jfloat - tmp2;
-
-			if (x < 0.5f) x = 0.5f;
-			if (x > Nfloat + 0.5f) x = Nfloat + 0.5f;
-			i0 = floor(x);
-			i1 = i0 + 1.0f;
-			if (y < 0.5f) y = 0.5f;
-			if (y > Nfloat + 0.5f) y = Nfloat + 0.5f;
-			j0 = floor(y);
-			j1 = j0 + 1.0f;
-
-			s1 = x - i0;
-			s0 = 1.0f - s1;
-			t1 = y - j0;
-			t0 = 1.0f - t1;
+	for (int j = 1; j < size - 1; j++) {
+		for (int i = 1; i < size - 1; i++) {
+			calcUpstreamCoords(Nfloat, vx[j][i], vy[j][i], dtx, dty, i, j, i0, i1, j0, j1, s0, s1, t0, t1);
 
 			int i0i = int(i0);
 			int i1i = int(i1);
 			int j0i = int(j0);
 			int j1i = int(j1);
 
-			constrain(i0i, 1, size - 2);
-			constrain(i1i, 1, size - 2);
-			constrain(j0i, 1, size - 2);
-			constrain(j1i, 1, size - 2);
+			constrain(i0i, 0, size - 1);
+			constrain(i1i, 0, size - 1);
+			constrain(j0i, 0, size - 1);
+			constrain(j1i, 0, size - 1);
 
 			d[j][i] =
 				s0 * (t0 * d0[j0i][i0i] + t1 * d0[j1i][i0i]) +
@@ -200,43 +181,53 @@ void FluidBox::updateTracers() {
 	float dty = dt * (size - 2);
 
 	float s0, s1, t0, t1;
-	float tmp1, tmp2, x, y;
 
 	float Nfloat = size;
 
 	for (int i = 0; i < tracers.size(); i++) {
-		tmp1 = dtx * velocity->getVec(tracers[i].pos).x;
-		tmp2 = dty * velocity->getVec(tracers[i].pos).y;
-		x = tracers[i].pos.x - tmp1;
-		y = tracers[i].pos.y - tmp2;
-
-		if (x < 0.5f) x = 0.5f;
-		if (x > Nfloat + 0.5f) x = Nfloat + 0.5f;
-		i0 = floor(x);
-		i1 = i0 + 1.0f;
-		if (y < 0.5f) y = 0.5f;
-		if (y > Nfloat + 0.5f) y = Nfloat + 0.5f;
-		j0 = floor(y);
-		j1 = j0 + 1.0f;
-
-		s1 = x - i0;
-		s0 = 1.0f - s1;
-		t1 = y - j0;
-		t0 = 1.0f - t1;
+		calcUpstreamCoords(Nfloat, velocity->getVec(tracers[i].pos).x, velocity->getVec(tracers[i].pos).y, dtx, dty, tracers[i].pos.x, tracers[i].pos.y, i0, i1, j0, j1, s0, s1, t0, t1);
 
 		tracers[i].pos +=
 			s0 * (t0 * (tracers[i].pos - glm::vec2(i0, j0)) + t1 * (tracers[i].pos - glm::vec2(i0, j1))) +
 			s1 * (t0 * (tracers[i].pos - glm::vec2(i1, j0)) + t1 * (tracers[i].pos - glm::vec2(i1, j1)));
+
 		constrain(tracers[i].pos, 1, size - 2);
 	}
 }
 
+void FluidBox::calcUpstreamCoords(float Nfloat, float vx, float vy, float dtx, float dty, int i, int j, float &i0, float &i1, float &j0, float &j1, float &s0, float &s1, float &t0, float &t1) {
+	float tmp1, tmp2, x, y;
+
+	tmp1 = dtx * vx;
+	tmp2 = dty * vy;
+	x = i - tmp1;
+	y = j - tmp2;
+
+	if (x < 0.5f) x = 0.5f;
+	if (x > Nfloat + 0.5f) x = Nfloat + 0.5f;
+	i0 = floor(x);
+	i1 = i0 + 1.0f;
+	if (y < 0.5f) y = 0.5f;
+	if (y > Nfloat + 0.5f) y = Nfloat + 0.5f;
+	j0 = floor(y);
+	j1 = j0 + 1.0f;
+
+	s1 = x - i0;
+	s0 = 1.0f - s1;
+	t1 = y - j0;
+	t0 = 1.0f - t1;
+}
+
 void FluidBox::addTracer(glm::vec2 pos, glm::vec3 color) {
+	if (constrain(pos, 0, size - 1)) {
+		return;
+	}
+
 	tracers.push_back(Tracer(pos, color));
 }
 
 void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color) {
-	if (constrain(pos, 1, size - 2)) {
+	if (constrain(pos, 0, size - 1)) {
 		return;
 	}
 

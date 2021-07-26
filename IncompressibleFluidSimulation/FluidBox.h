@@ -84,6 +84,8 @@ public:
 
 	void updateTracers();
 
+	void calcUpstreamCoords(float Nfloat, float vx, float vy, float dtx, float dty, int i, int j, float &i0, float &i1, float &j0, float &j1, float &s0, float &s1, float &t0, float &t1);
+
 	void fadeDensity(float increment, float min, float max);
 
 	void addTracer(glm::vec2 pos, glm::vec3 color);

@@ -409,8 +409,11 @@ void containTracers(FluidBox& fluid, int min, int max) {
 
 void updateData(FluidBox &fluidBox, float* data) {
 	int index = 0;
+	vector<vector<Tracer*>> tracerMap;
 
-	vector<vector<Tracer*>> tracerMap = fluid->generateTracerMap();
+	if (enableTracers) {
+		tracerMap = fluid->generateTracerMap();
+	}
 
 	for (int y = 1; y < fluidBox.size-1; y++) {
 		for (int x = 1; x < fluidBox.size-1; x++) {
@@ -431,7 +434,7 @@ void updateData(FluidBox &fluidBox, float* data) {
 			data[index + 3] = color.y;
 			data[index + 4] = color.z;
 
-			if (tracerMap[y][x] != nullptr) {
+			if (enableTracers && tracerMap[y][x] != nullptr) {
 				data[index + 2] *= tracerMap[y][x]->color.x;
 				data[index + 3] *= tracerMap[y][x]->color.y;
 				data[index + 4] *= tracerMap[y][x]->color.z;
