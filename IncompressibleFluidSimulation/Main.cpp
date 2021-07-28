@@ -262,13 +262,76 @@ int main() {
 		glfwPollEvents();
 
 		timer.end();
-		timer.printFPS(true);
+		//timer.printFPS(true);
 	}
 
 	glfwTerminate();
 	delete[] renderFluid->data;
 
 	return 0;
+}
+
+string enterCommand() {
+	char* command;
+
+	std::cin >> command;
+
+	return string(command);
+}
+
+std::vector<string> seperateStringBySpaces(string str) {
+	std::vector<string> list = std::vector<string>();
+
+	int startIndex = 0;
+	bool trackingString = false;
+	for (int i = 0; i < str.length; i++) {
+		if (str[i] != ' ') {
+			if (trackingString) {
+				list.push_back(str.substr(startIndex, i));
+				trackingString = false;
+			}
+			else {
+				startIndex = i;
+				trackingString = true;
+			}
+		}
+	}
+
+	if (trackingString) {
+		list.push_back(str.substr(startIndex, str.length));
+	}
+}
+
+/*
+std::vector<string> seperateStringBySpaces(string str) {
+	std::vector<string> list = std::vector<string>();
+
+	int startIndex = 0;
+	for (int i = 0; i < str.length; i++) {
+		if ((str[i] == ' ') && i - startIndex > 0) {
+			list.push_back(str.substr(startIndex, i));
+			startIndex = i;
+		}
+	}
+
+	if (str.length - 1 - startIndex > 0) {
+		list.push_back(str.substr(startIndex, str.length));
+	}
+}
+*/
+
+bool processCommand(string command) {
+	// process and desegment
+	// follows these steps
+	// 1. Seperate words based on spaces into a list.
+	// 2. Iterate down the list into a decision tree.
+	// 3. Run the proper identified command
+
+	std::vector<string> list = seperateStringBySpaces(command);
+
+	for (int i = 0; i < list.size(); i++) {
+
+	}
 }
 
 void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode) {
@@ -290,6 +353,13 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	// clear screen controls
 	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
 		fluid.clear();
+	}
+
+	// enter commands
+	if (glfwGetKey(window, GLFW_KEY_SLASH) == GLFW_PRESS) {
+		string command = enterCommand();
+
+		processCommand(command);
 	}
 
 	// process key input
