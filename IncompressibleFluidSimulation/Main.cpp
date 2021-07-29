@@ -24,6 +24,7 @@ const double fps = 60;
 
 // control settings
 bool enableTracers = false;
+bool enableColor = true;
 
 // status vars
 int SCR_HEIGHT;
@@ -170,6 +171,8 @@ int colorIndex;
 int colorInc;
 int colorSpectSize;
 
+glm::vec3 tracerColor;
+
 void setup() {
 	fluid = new FluidBox(resolution, 0.1f, 0.0000001f, 0.4f);
 	controlMode = ControlMode::MOUSE_SWIPE;
@@ -178,6 +181,8 @@ void setup() {
 	colorIndex = 0;
 	colorInc = 1;
 	colorSpectSize = 5;
+
+	tracerColor = glm::vec3(255);
 
 	mouse = MouseData();
 
@@ -272,11 +277,11 @@ int main() {
 }
 
 string enterCommand() {
-	char* command;
+	string command = "";
 
-	std::cin >> command;
+	std::getline(std::cin, command);
 
-	return string(command);
+	return command;
 }
 
 std::vector<string> seperateStringBySpaces(string str) {
@@ -284,22 +289,26 @@ std::vector<string> seperateStringBySpaces(string str) {
 
 	int startIndex = 0;
 	bool trackingString = false;
-	for (int i = 0; i < str.length; i++) {
+	for (int i = 0; i < str.length(); i++) {
 		if (str[i] != ' ') {
-			if (trackingString) {
-				list.push_back(str.substr(startIndex, i));
-				trackingString = false;
-			}
-			else {
+			if (!trackingString) {
 				startIndex = i;
 				trackingString = true;
+			}
+		}
+		else {
+			if (trackingString) {
+				list.push_back(str.substr(startIndex, i - startIndex));
+				trackingString = false;
 			}
 		}
 	}
 
 	if (trackingString) {
-		list.push_back(str.substr(startIndex, str.length));
+		list.push_back(str.substr(startIndex, str.length() - startIndex));
 	}
+
+	return list;
 }
 
 /*
@@ -329,9 +338,46 @@ bool processCommand(string command) {
 
 	std::vector<string> list = seperateStringBySpaces(command);
 
-	for (int i = 0; i < list.size(); i++) {
-
+	if (list.size() == 0) {
+		return false;
 	}
+	
+	// command list
+	if (list[0] == "clear") {
+		(*fluid).clear();
+	}
+	
+	if (list[0] == "set") {
+		if (list.size() > 1) {
+			if (list[1] == "tracers") {
+				if (list.size() > 2) {
+					if (list[2] == "enabled") {
+						enableTracers = true;
+						return true;
+					}
+					if (list[2] == "disabled") {
+						enableTracers = false;
+						return true;
+					}
+				}
+			}
+
+			if (list[1] == "colors") {
+				if (list.size() > 2) {
+					if (list[2] == "enabled") {
+						enableColor = true;
+						return true;
+					}
+					if (list[2] == "disabled") {
+						enableColor = false;
+						return true;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
 }
 
 void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode) {
@@ -443,6 +489,10 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 
 	dir = glm::normalize(dir);
 
+	if (!enableColor) {
+		color = glm::vec3(255);
+	}
+
 	for (int y = -brushSize; y < brushSize; y++) {
 		for (int x = -brushSize; x < brushSize; x++) {
 			// make a circle for the density and velocity to be added
@@ -452,13 +502,13 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 				if (!constrain(cpos, 1, fluid.size - 2)) {
 					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color);
 					fluid.addVelocity(cpos, velocityInc * dir);
-
-					if (enableTracers) {
-						fluid.addTracer(cpos, getColorSpect(colorIndex, colorSpectSize));
-					}
 				}
 			}
 		}
+	}
+
+	if (enableTracers) {
+		fluid.addTracer(pos, tracerColor);
 	}
 }
 
