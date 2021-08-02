@@ -61,7 +61,7 @@ public:
 	// runtime vars
 	// density (one is the previous stored value and the other is the current value)
 	// First dimension refers to rgb
-	std::vector<std::vector<std::vector<float>>> simDensity;
+	std::vector<std::vector<std::vector<float>>> prevDensity;
 	std::vector<std::vector<std::vector<float>>> density;
 
 	// Color Tracers (Each array contains the rgb float values "0-255")

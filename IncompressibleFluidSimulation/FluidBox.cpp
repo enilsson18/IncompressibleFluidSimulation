@@ -32,20 +32,26 @@ FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
 
 // the main update step
 void FluidBox::update() {
-	diffuse(velocityPrev->getXList(), velocity->getXList(), 1);
-	diffuse(velocityPrev->getYList(), velocity->getYList(), 2);
+	vector<vector<float>>& vPrevXList = velocityPrev->getXList();
+	vector<vector<float>>& vPrevYList = velocityPrev->getYList();
+	
+	vector<vector<float>>& vXList = velocity->getXList();
+	vector<vector<float>>& vYList = velocity->getYList();
 
-	project(velocityPrev->getXList(), velocityPrev->getYList(), velocity->getXList(), velocity->getYList());
+	diffuse(vPrevXList, vXList, 1);
+	diffuse(vPrevYList, vYList, 2);
 
-	advect(1, velocityPrev->getXList(), velocityPrev->getYList(), velocity->getXList(), velocityPrev->getXList());
-	advect(2, velocityPrev->getXList(), velocityPrev->getYList(), velocity->getYList(), velocityPrev->getYList());
+	project(vPrevXList, vPrevYList, vXList, vYList);
 
-	project(velocity->getXList(), velocity->getYList(), velocityPrev->getXList(), velocityPrev->getYList());
+	advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
+	advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
+
+	project(vXList, vYList, vPrevXList, vPrevYList);
 
 	// applys advection for each color channel
 	for (int i = 0; i < 3; i++) {
-		diffuse(simDensity[i], density[i], 0);
-		advect(0, velocity->getXList(), velocity->getYList(), density[i], simDensity[i]);
+		diffuse(prevDensity[i], density[i], 0);
+		advect(0, vXList, vYList, density[i], prevDensity[i]);
 	}
 
 	updateTracers();
@@ -191,7 +197,7 @@ void FluidBox::updateTracers() {
 			s0 * (t0 * (tracers[i].pos - glm::vec2(i0, j0)) + t1 * (tracers[i].pos - glm::vec2(i0, j1))) +
 			s1 * (t0 * (tracers[i].pos - glm::vec2(i1, j0)) + t1 * (tracers[i].pos - glm::vec2(i1, j1)));
 
-		constrain(tracers[i].pos, 1, size - 2);
+		constrain(tracers[i].pos, 0, size - 1);
 	}
 }
 
@@ -246,7 +252,7 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
 }
 
 void FluidBox::clear() {
-	this->simDensity = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
+	this->prevDensity = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
 	this->density = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
 	this->tracers = vector<Tracer>();
 	this->velocityPrev = new DynamicVector(size, size);

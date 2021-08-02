@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 
 // utility
 #include <glad/glad.h>
@@ -30,7 +31,7 @@ bool enableColor = true;
 int SCR_HEIGHT;
 int SCR_WIDTH;
 
-enum ControlMode { NONE = 0, DIRECTIONAL = 1, MOUSE_SWIPE = 2, MOUSE_CLICK_BLOP = 3 };
+enum ControlMode { NONE = 0, DIRECTIONAL = 1, MOUSE_SWIPE = 2 };
 
 struct MouseData {
 	bool pressedL;
@@ -144,7 +145,13 @@ void addMouseClickBlop();
 
 // functions
 void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode);
+void incrementColorIndex();
+glm::vec2 getScalingVec();
 glm::vec3 getColorSpect(float n, float m);
+
+ // commands
+string enterCommand();
+std::vector<string> seperateStringBySpaces(string str);
 
 tuple<unsigned int, unsigned int> findWindowDims(float relativeScreenSize = 0.85, float aspectRatio = 1);
 void updateData(FluidBox &fluidBox, float* data);
@@ -171,6 +178,8 @@ int colorIndex;
 int colorInc;
 int colorSpectSize;
 
+glm::vec3 defaultColor;
+
 glm::vec3 tracerColor;
 
 void setup() {
@@ -182,7 +191,9 @@ void setup() {
 	colorInc = 1;
 	colorSpectSize = 5;
 
-	tracerColor = glm::vec3(255);
+	defaultColor = glm::vec3(255);
+
+	tracerColor = glm::vec3(defaultColor);
 
 	mouse = MouseData();
 
@@ -227,47 +238,62 @@ void setup() {
 	updateBuffers(renderFluid);
 }
 
+void draw() {
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	renderFluid->shader.use();
+	renderFluid->shader.setFloat("sizeX", 2.0f / resolution);
+	renderFluid->shader.setFloat("sizeY", 2.0f / resolution);
+
+	glBindVertexArray(renderFluid->VAO);
+	glDrawArrays(GL_POINTS, 0, resolution * resolution);
+}
+
+void updateFrame(FPSCounter& timer) {
+	timer.start();
+
+	processControls(window, *fluid, controlMode);
+
+	// update frame
+	if (!freeze) {
+		fluid->update();
+		fluid->fadeDensity(0.05f, 0, 255);
+	}
+
+	updateData(*fluid, renderFluid->data);
+	updateBuffers(renderFluid);
+
+	//draw
+	draw();
+
+	mouse.update();
+
+	// update view
+	glfwSwapBuffers(window);
+	glfwPollEvents();
+
+	timer.end();
+	timer.printFPS(true);
+}
+
+void frameLoopThread(FPSCounter timer) {
+	while (!glfwWindowShouldClose(window)) {
+		updateFrame(timer);
+	}
+}
+
+string commandInputThread() {
+	return enterCommand();
+}
+
 int main() {
 	setup();
 
 	FPSCounter timer = FPSCounter();
 
-	std::cout << "entering main loop" << std::endl;
-
 	while (!glfwWindowShouldClose(window)) {
-		timer.start();
-
-		processControls(window, *fluid, controlMode);
-
-		// update frame
-		if (!freeze) {
-			fluid->update();
-			fluid->fadeDensity(0.05f, 0, 255);
-		}
-
-
-		updateData(*fluid, renderFluid->data);
-		updateBuffers(renderFluid);
-
-		//draw
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		renderFluid->shader.use();
-		renderFluid->shader.setFloat("sizeX", 2.0f / resolution);
-		renderFluid->shader.setFloat("sizeY", 2.0f / resolution);
-
-		glBindVertexArray(renderFluid->VAO);
-		glDrawArrays(GL_POINTS, 0, resolution * resolution);
-
-		mouse.update();
-
-		// update view
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-
-		timer.end();
-		//timer.printFPS(true);
+		updateFrame(timer);
 	}
 
 	glfwTerminate();
@@ -276,59 +302,7 @@ int main() {
 	return 0;
 }
 
-string enterCommand() {
-	string command = "";
-
-	std::getline(std::cin, command);
-
-	return command;
-}
-
-std::vector<string> seperateStringBySpaces(string str) {
-	std::vector<string> list = std::vector<string>();
-
-	int startIndex = 0;
-	bool trackingString = false;
-	for (int i = 0; i < str.length(); i++) {
-		if (str[i] != ' ') {
-			if (!trackingString) {
-				startIndex = i;
-				trackingString = true;
-			}
-		}
-		else {
-			if (trackingString) {
-				list.push_back(str.substr(startIndex, i - startIndex));
-				trackingString = false;
-			}
-		}
-	}
-
-	if (trackingString) {
-		list.push_back(str.substr(startIndex, str.length() - startIndex));
-	}
-
-	return list;
-}
-
-/*
-std::vector<string> seperateStringBySpaces(string str) {
-	std::vector<string> list = std::vector<string>();
-
-	int startIndex = 0;
-	for (int i = 0; i < str.length; i++) {
-		if ((str[i] == ' ') && i - startIndex > 0) {
-			list.push_back(str.substr(startIndex, i));
-			startIndex = i;
-		}
-	}
-
-	if (str.length - 1 - startIndex > 0) {
-		list.push_back(str.substr(startIndex, str.length));
-	}
-}
-*/
-
+// control methods
 bool processCommand(string command) {
 	// process and desegment
 	// follows these steps
@@ -345,6 +319,7 @@ bool processCommand(string command) {
 	// command list
 	if (list[0] == "clear") {
 		(*fluid).clear();
+		return true;
 	}
 	
 	if (list[0] == "set") {
@@ -385,15 +360,10 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	if (mouse.pressedL) {
 		if (controlMode == ControlMode::MOUSE_SWIPE) {
 			addMouseSwipeFluid();
-			glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
-		}
-		if (controlMode == ControlMode::MOUSE_CLICK_BLOP) {
-			addMouseClickBlop();
 		}
 	}
 	else if (mouse.prevPressedL){
-		//colorIndex = (colorIndex + 1) % (sizeof(colorList) / sizeof(glm::vec3));
-		colorIndex = (colorIndex + colorInc) % colorSpectSize;
+		incrementColorIndex();
 	}
 
 	// clear screen controls
@@ -405,18 +375,15 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	if (glfwGetKey(window, GLFW_KEY_SLASH) == GLFW_PRESS) {
 		string command = enterCommand();
 
-		processCommand(command);
+		if (processCommand(command)) {
+			std::cout << "Command Executed Sucessfully" << std::endl;
+		}
+		else {
+			std::cout << "Command Executed Unsucessfully" << std::endl;
+		}
 	}
 
 	// process key input
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-		
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		
-	}
-
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
@@ -435,62 +402,37 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 			break;
 		}
 	}
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
-		switch (controlMode) {
-		case 0:
-			break;
-		case 1:
-			break;
-		case 2:
-			break;
-		}
-	}
-}
-
-void addMouseClickBlop() {
-	glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
-	addBlop(mouse.currentPos * scaling, 1, 20.0f, 0.01f * 0.15f);
-}
-
-void addBlop(glm::vec2 pos, int radius, float densityInc, float velocityInc) {
-	constrain(densityInc, 0, 50);
-	//constrain(velocityInc, 0, 0.15);
-
-	for (int y = -radius; y < radius; y++) {
-		for (int x = -radius; x < radius; x++) {
-			// make a circle for the density and velocity to be added
-			if (glm::length(glm::vec2(x, y)) <= radius) {
-				glm::vec2 cpos = glm::vec2(pos.x + x, pos.y + y);
-				glm::vec2 dir = glm::normalize(glm::vec2(x, y));
-
-				std::cout << glm::to_string(cpos) << std::endl;
-
-				// skip if the pos is out of bounds
-				if (!constrain(cpos, 1, (*fluid).size - 2)) {
-					(*fluid).addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f));
-					(*fluid).addVelocity(cpos, velocityInc * dir);
-					std::cout << glm::to_string(velocityInc * dir) << " " << densityInc * (float(std::rand()) / INT_MAX + 0.5f) << std::endl;
-				}
-			}
-		}
-	}
 }
 
 void addMouseSwipeFluid() {
-	glm::vec2 scaling = glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
+	// An arbitrary number used for scaling the addition of fluid
+	float densityMultiplier = 0.05f;
+	float velocityMultiplier = 0.0025f;
+	glm::vec2 scaling = getScalingVec();
+
+	// The distance between the mouse's current pos and its previous pos
 	float mouseDiff = glm::length((mouse.currentPos - mouse.lastPos) * scaling);
-	float densityInc = 0.2f * (mouseDiff / 4.0f);
-	addDirectionalFluid(*fluid, 10, densityInc, 0.025f * (mouseDiff / 10.0f), mouse.currentPos * scaling, (mouse.currentPos - mouse.lastPos) * scaling, getColorSpect(colorIndex, colorSpectSize));
+
+	// solve for parameters of directional fluid
+	int brushSize = 10;
+	float densityInc = densityMultiplier * mouseDiff;
+	float velocityInc = velocityMultiplier * mouseDiff;
+	glm::vec2 position = mouse.currentPos * scaling;
+	glm::vec2 direction = (mouse.currentPos - mouse.lastPos) * scaling;
+	glm::vec3 color = getColorSpect(colorIndex, colorSpectSize);
+
+	addDirectionalFluid(*fluid, brushSize, densityInc, velocityInc, position, direction, color);
 }
 
 void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float velocityInc, glm::vec2 pos, glm::vec2 dir, glm::vec3 color){
+	// create limits for the increments to prevent too much velocity being added (can make divergence unsolvable) and also limits the density
 	constrain(densityInc, 0, 50);
-	constrain(velocityInc, 0, 0.15);
+	constrain(velocityInc, 0, 0.15f);
 
 	dir = glm::normalize(dir);
 
 	if (!enableColor) {
-		color = glm::vec3(255);
+		color = glm::vec3(defaultColor);
 	}
 
 	for (int y = -brushSize; y < brushSize; y++) {
@@ -549,15 +491,17 @@ void updateData(FluidBox &fluidBox, float* data) {
 			//data[index + 3] = color;
 			//data[index + 4] = color;
 
+			// get color from the rgb density maps in the fluid sim
 			glm::vec3 color = fluidBox.getColorAtPos(glm::vec2(x,y));
 			data[index + 2] = color.x;
 			data[index + 3] = color.y;
 			data[index + 4] = color.z;
 
+			// override color if a tracer is there
 			if (enableTracers && tracerMap[y][x] != nullptr) {
-				data[index + 2] *= tracerMap[y][x]->color.x;
-				data[index + 3] *= tracerMap[y][x]->color.y;
-				data[index + 4] *= tracerMap[y][x]->color.z;
+				data[index + 2] = tracerMap[y][x]->color.x;
+				data[index + 3] = tracerMap[y][x]->color.y;
+				data[index + 4] = tracerMap[y][x]->color.z;
 			}
 
 			//float alpha = fluidBox.density[y][x] / 255.0f;
@@ -574,8 +518,6 @@ void updateData(FluidBox &fluidBox, float* data) {
 			//data[index + 3] = 200 / 255.0f;
 			//data[index + 4] = fluidBox.density[y][x] / 255.0f;
 			index += 5;
-
-			//std::cout << data[index-5] << " " << data[index - 4] << " " << data[index - 3] << " " << data[index - 2] << " " << data[index - 1] << std::endl;
 		}
 	}
 }
@@ -586,12 +528,22 @@ void updateBuffers(RenderObject* renderObject) {
 	glBindBuffer(GL_ARRAY_BUFFER, renderObject->VBO);
 	glBufferData(GL_ARRAY_BUFFER, ((resolution * resolution - 4 - resolution * 4) * (2 + 3))*sizeof(float), renderObject->data, GL_STATIC_DRAW);
 
+	// position
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	// color
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
 
 	glBindVertexArray(0);
+}
+
+void incrementColorIndex() {
+	colorIndex = (colorIndex + colorInc) % colorSpectSize;
+}
+
+glm::vec2 getScalingVec() {
+	return glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
 }
 
 // sinusoidal color function
@@ -608,6 +560,42 @@ glm::vec3 getColorSpect(float n, float m) {
 	b = max(0, min(255, b));
 
 	return glm::vec3(r, g, b);
+}
+
+// command methods
+string enterCommand() {
+	string command = "";
+
+	std::getline(std::cin, command);
+
+	return command;
+}
+
+std::vector<string> seperateStringBySpaces(string str) {
+	std::vector<string> list = std::vector<string>();
+
+	int startIndex = 0;
+	bool trackingString = false;
+	for (int i = 0; i < str.length(); i++) {
+		if (str[i] != ' ') {
+			if (!trackingString) {
+				startIndex = i;
+				trackingString = true;
+			}
+		}
+		else {
+			if (trackingString) {
+				list.push_back(str.substr(startIndex, i - startIndex));
+				trackingString = false;
+			}
+		}
+	}
+
+	if (trackingString) {
+		list.push_back(str.substr(startIndex, str.length() - startIndex));
+	}
+
+	return list;
 }
 
 // finds the optimal dimensions for the window
