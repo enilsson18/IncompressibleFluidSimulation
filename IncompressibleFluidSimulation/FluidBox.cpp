@@ -195,7 +195,7 @@ void FluidBox::updateTracers() {
 
 		tracers[i].pos +=
 			s0 * (t0 * (tracers[i].pos - glm::vec2(i0, j0)) + t1 * (tracers[i].pos - glm::vec2(i0, j1))) +
-			s1 * (t0 * (tracers[i].pos - glm::vec2(i1, j0)) + t1 * (tracers[i].pos - glm::vec2(i1, j1)));
+			s1 * (t0 * (tracers[i].pos - glm::vec2(i1, j0)) + t1 * (tracers[i].pos - glm::vec2(i1, j1))) - glm::vec2(0.5f);
 
 		constrain(tracers[i].pos, 0, size - 1);
 	}
