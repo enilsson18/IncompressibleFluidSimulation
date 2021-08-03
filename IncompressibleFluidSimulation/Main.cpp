@@ -29,7 +29,8 @@ const double fps = 60;
 bool enableTracers = false;
 bool enableColor = true;
 
-std::atomic<bool> breakMainThread;
+string commandToRead;
+std::atomic<bool> enteredCommand;
 
 // status vars
 int SCR_HEIGHT;
@@ -156,6 +157,7 @@ glm::vec3 getColorSpect(float n, float m);
  // commands
 string enterCommand();
 std::vector<string> seperateStringBySpaces(string str);
+void printProcessCommandResult(bool result);
 bool processCommand(string command);
 
 tuple<unsigned int, unsigned int> findWindowDims(float relativeScreenSize = 0.85, float aspectRatio = 1);
@@ -178,6 +180,8 @@ RenderObject* renderFluid;
 // control vars
 ControlMode controlMode;
 bool freeze;
+
+FPSCounter timer;
 
 int colorIndex;
 int colorInc;
@@ -202,7 +206,8 @@ void setup() {
 
 	mouse = MouseData();
 
-	breakMainThread = false;
+	commandToRead = "";
+	enteredCommand.store(false);
 
 	// init graphics stuff
 	glfwInit();
@@ -281,45 +286,60 @@ void updateFrame(FPSCounter& timer) {
 	glfwPollEvents();
 
 	timer.end();
-	timer.printFPS(true);
+	//timer.printFPS(true);
 }
 
-void frameLoopThread(FPSCounter timer) {
-	while (!glfwWindowShouldClose(window) && !breakMainThread) {
-		updateFrame(timer);
-	}
-}
-
+// store the command input and then signal the main thread that we are complete and can exit the program
 string commandInputThread() {
-	return enterCommand();
+	std::cout << "Enter a command: ";
+
+	commandToRead = enterCommand();
+	enteredCommand.store(true);
+	return commandToRead;
 }
 
 int main() {
 	setup();
 
-	FPSCounter timer = FPSCounter();
+	timer = FPSCounter();
 	//frameLoopThread(timer);
 
+	future<string> commandInput = std::async(std::launch::async, commandInputThread);
+
 	while (!glfwWindowShouldClose(window)) {
-		future<void> simLoop = std::async(std::launch::async, frameLoopThread, timer);
-		simLoop.get();
-		/*
-		future<string> commandInput = std::async(std::launch::async, enterCommand);
+		updateFrame(timer);
 
-		string command = commandInput.get();
-		if (command != "") {
-			breakMainThread = true;
-			simLoop.get();
+		// if a command is sent then process, reset the command flag, and restart the async operation
+		if (enteredCommand.load()) {
+			bool out = processCommand(commandToRead);
+			printProcessCommandResult(out);
 
-			processCommand(command);
+			// reset vals
+			commandToRead = "";
+			enteredCommand.store(false);
+			commandInput = std::async(std::launch::async, commandInputThread);
 		}
-		*/
 	}
 
 	glfwTerminate();
 	delete[] renderFluid->data;
 
 	return 0;
+}
+
+void listAllCommands() {
+	std::cout << "----- Commands -----" << std::endl;
+
+	std::cout <<
+		"help" << std::endl <<
+		"clear" << std::endl <<
+		"get fps" << std::endl <<
+		"set tracers enabled" << std::endl <<
+		"set tracers disabled" << std::endl <<
+		"set colors enabled" << std::endl <<
+		"set colors disabled" << std::endl;
+
+	std::cout << "--------------------" << std::endl;
 }
 
 // control methods
@@ -337,6 +357,11 @@ bool processCommand(string command) {
 	}
 	
 	// command list
+	if (list[0] == "help") {
+		listAllCommands();
+		return true;
+	}
+
 	if (list[0] == "clear") {
 		(*fluid).clear();
 		return true;
@@ -372,7 +397,26 @@ bool processCommand(string command) {
 		}
 	}
 
+	if (list[0] == "get") {
+		if (list.size() > 1) {
+			if (list[1] == "fps") {
+				timer.printFPS();
+				return true;
+			}
+		}
+	}
+
 	return false;
+}
+
+void printProcessCommandResult(bool result) {
+	if (result) {
+		//std::cout << "Command Executed Sucessfully" << std::endl;
+	}
+	else {
+		std::cout << "Command Executed Unsucessfully (type help for a list of all valid commands)" << std::endl;
+	}
+	std::cout << std::endl;
 }
 
 void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode) {
@@ -395,12 +439,7 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 	if (glfwGetKey(window, GLFW_KEY_SLASH) == GLFW_PRESS) {
 		string command = enterCommand();
 
-		if (processCommand(command)) {
-			std::cout << "Command Executed Sucessfully" << std::endl;
-		}
-		else {
-			std::cout << "Command Executed Unsucessfully" << std::endl;
-		}
+		printProcessCommandResult(processCommand(command));
 	}
 
 	// process key input
