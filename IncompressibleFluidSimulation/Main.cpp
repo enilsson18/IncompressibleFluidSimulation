@@ -8,6 +8,8 @@
 
 #include <tuple>
 #include <windows.h>
+#include <future>
+#include <thread>
 #include <chrono>
 
 #include <glm/glm.hpp>
@@ -26,6 +28,8 @@ const double fps = 60;
 // control settings
 bool enableTracers = false;
 bool enableColor = true;
+
+std::atomic<bool> breakMainThread;
 
 // status vars
 int SCR_HEIGHT;
@@ -152,6 +156,7 @@ glm::vec3 getColorSpect(float n, float m);
  // commands
 string enterCommand();
 std::vector<string> seperateStringBySpaces(string str);
+bool processCommand(string command);
 
 tuple<unsigned int, unsigned int> findWindowDims(float relativeScreenSize = 0.85, float aspectRatio = 1);
 void updateData(FluidBox &fluidBox, float* data);
@@ -196,6 +201,8 @@ void setup() {
 	tracerColor = glm::vec3(defaultColor);
 
 	mouse = MouseData();
+
+	breakMainThread = false;
 
 	// init graphics stuff
 	glfwInit();
@@ -278,7 +285,7 @@ void updateFrame(FPSCounter& timer) {
 }
 
 void frameLoopThread(FPSCounter timer) {
-	while (!glfwWindowShouldClose(window)) {
+	while (!glfwWindowShouldClose(window) && !breakMainThread) {
 		updateFrame(timer);
 	}
 }
@@ -291,9 +298,22 @@ int main() {
 	setup();
 
 	FPSCounter timer = FPSCounter();
+	//frameLoopThread(timer);
 
 	while (!glfwWindowShouldClose(window)) {
-		updateFrame(timer);
+		future<void> simLoop = std::async(std::launch::async, frameLoopThread, timer);
+		simLoop.get();
+		/*
+		future<string> commandInput = std::async(std::launch::async, enterCommand);
+
+		string command = commandInput.get();
+		if (command != "") {
+			breakMainThread = true;
+			simLoop.get();
+
+			processCommand(command);
+		}
+		*/
 	}
 
 	glfwTerminate();
