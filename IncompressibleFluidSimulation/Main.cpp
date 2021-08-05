@@ -244,7 +244,7 @@ void setup() {
 	// setup fluid render stuff
 	renderFluid = new RenderObject();
 	renderFluid->shader = Shader("resources/shaders/point_render.vs", "resources/shaders/point_render.fs", "resources/shaders/point_render.gs");
-	renderFluid->allocateMemory((resolution * resolution - 4 - resolution * 4) * (2 + 3));
+	renderFluid->allocateMemory((resolution * resolution) * (2 + 3));
 
 	updateData(*fluid, renderFluid->data);
 	updateBuffers(renderFluid);
@@ -530,14 +530,9 @@ void containTracers(FluidBox& fluid, int min, int max) {
 
 void updateData(FluidBox &fluidBox, float* data) {
 	int index = 0;
-	vector<vector<Tracer*>> tracerMap;
 
-	if (enableTracers) {
-		tracerMap = fluid->generateTracerMap();
-	}
-
-	for (int y = 1; y < fluidBox.size-1; y++) {
-		for (int x = 1; x < fluidBox.size-1; x++) {
+	for (int y = 0; y < fluidBox.size; y++) {
+		for (int x = 0; x < fluidBox.size; x++) {
 			data[index] = float(x) / fluidBox.size;
 			data[index + 1] = float(y) / fluidBox.size;
 
@@ -556,13 +551,6 @@ void updateData(FluidBox &fluidBox, float* data) {
 			data[index + 3] = color.y;
 			data[index + 4] = color.z;
 
-			// override color if a tracer is there
-			if (enableTracers && tracerMap[y][x] != nullptr) {
-				data[index + 2] = tracerMap[y][x]->color.x;
-				data[index + 3] = tracerMap[y][x]->color.y;
-				data[index + 4] = tracerMap[y][x]->color.z;
-			}
-
 			//float alpha = fluidBox.density[y][x] / 255.0f;
 			//glm::vec3 color = alpha * fluidBox.getColorAtPos(glm::vec2(x, y));
 			//data[index + 2] = color.x/255;
@@ -579,13 +567,29 @@ void updateData(FluidBox &fluidBox, float* data) {
 			index += 5;
 		}
 	}
+
+	// override color if a tracer is there
+	if (enableTracers) {
+		std::vector<Tracer> tracers = fluidBox.getTracers();
+
+		for (int i = 0; i < tracers.size(); i++) {
+			int x = tracers[i].pos.x;
+			int y = tracers[i].pos.y;
+
+			int index = (y * (fluidBox.size) + x) * 5;
+
+			data[index + 2] = tracers[i].color.x;
+			data[index + 3] = tracers[i].color.y;
+			data[index + 4] = tracers[i].color.z;
+		}
+	}
 }
 
 void updateBuffers(RenderObject* renderObject) {
 	glBindVertexArray(renderObject->VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, renderObject->VBO);
-	glBufferData(GL_ARRAY_BUFFER, ((resolution * resolution - 4 - resolution * 4) * (2 + 3))*sizeof(float), renderObject->data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, ((resolution * resolution) * (2 + 3))*sizeof(float), renderObject->data, GL_STATIC_DRAW);
 
 	// position
 	glEnableVertexAttribArray(0);

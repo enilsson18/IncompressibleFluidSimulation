@@ -295,6 +295,10 @@ glm::vec3 FluidBox::getColorAtPos(glm::vec2 pos) {
 	return output;
 }
 
+std::vector<Tracer>& FluidBox::getTracers() {
+	return tracers;
+}
+
 vector<vector<Tracer*>> FluidBox::generateTracerMap() {
 	vector<vector<Tracer*>> map = vector<vector<Tracer*>>(size, vector<Tracer*>(size, nullptr));
 

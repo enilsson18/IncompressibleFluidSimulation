@@ -96,5 +96,7 @@ public:
 
 	glm::vec3 getColorAtPos(glm::vec2 pos);
 
+	std::vector<Tracer>& getTracers();
+
 	std::vector<std::vector<Tracer*>> generateTracerMap();
 };
