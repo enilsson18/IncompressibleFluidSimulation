@@ -190,9 +190,10 @@ int colorSpectSize;
 glm::vec3 defaultColor;
 
 glm::vec3 tracerColor;
+int tracerRadius;
 
 void setup() {
-	fluid = new FluidBox(resolution, 0.1f, 0.0000001f, 0.4f);
+	fluid = new FluidBox(resolution, 0.0f, 0.0000001f, 0.4f);
 	controlMode = ControlMode::MOUSE_SWIPE;
 	freeze = false;
 
@@ -203,6 +204,7 @@ void setup() {
 	defaultColor = glm::vec3(255);
 
 	tracerColor = glm::vec3(defaultColor);
+	tracerRadius = 0;
 
 	mouse = MouseData();
 
@@ -334,10 +336,18 @@ void listAllCommands() {
 		"help" << std::endl <<
 		"clear" << std::endl <<
 		"get fps" << std::endl <<
+		"get dt" << std::endl <<
+		"get visc" << std::endl <<
+		"get diff" << std::endl <<
+		"get iter" << std::endl <<
 		"set tracers enabled" << std::endl <<
 		"set tracers disabled" << std::endl <<
 		"set colors enabled" << std::endl <<
-		"set colors disabled" << std::endl;
+		"set colors disabled" << std::endl <<
+		"set dt" << std::endl <<
+		"set visc" << std::endl <<
+		"set diff" << std::endl <<
+		"set iter" << std::endl;
 
 	std::cout << "--------------------" << std::endl;
 }
@@ -394,6 +404,70 @@ bool processCommand(string command) {
 					}
 				}
 			}
+
+			if (list[1] == "dt") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stof(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					fluid->dt = num;
+
+					return true;
+				}
+			}
+
+			if (list[1] == "viscosity" || list[1] == "visc") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stof(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					fluid->visc = num;
+
+					return true;
+				}
+			}
+
+			if (list[1] == "diffusion" || list[1] == "diff") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stof(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					fluid->diff = num;
+
+					return true;
+				}
+			}
+
+			if (list[1] == "div_iter" || list[1] == "iter") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stoi(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					fluid->divIter = num;
+
+					return true;
+				}
+			}
 		}
 	}
 
@@ -401,6 +475,26 @@ bool processCommand(string command) {
 		if (list.size() > 1) {
 			if (list[1] == "fps") {
 				timer.printFPS();
+				return true;
+			}
+
+			if (list[1] == "dt") {
+				std::cout << "dt: " << fluid->dt << std::endl;
+				return true;
+			}
+
+			if (list[1] == "viscosity" || list[1] == "visc") {
+				std::cout << "Viscosity: " << fluid->dt << std::endl;
+				return true;
+			}
+
+			if (list[1] == "diffusion" || list[1] == "diff") {
+				std::cout << "Diffusion: " << fluid->diff << std::endl;
+				return true;
+			}
+
+			if (list[1] == "div_iter" || list[1] == "iter") {
+				std::cout << "Divergence Iterations: " << fluid->divIter << std::endl;
 				return true;
 			}
 		}
@@ -576,11 +670,30 @@ void updateData(FluidBox &fluidBox, float* data) {
 			int x = tracers[i].pos.x;
 			int y = tracers[i].pos.y;
 
-			int index = (y * (fluidBox.size) + x) * 5;
+			for (int iy = -tracerRadius; iy <= tracerRadius; iy++) {
+				for (int ix = -tracerRadius; ix <= tracerRadius; ix++) {
+					int newX = x + ix;
+					int newY = y + iy;
 
-			data[index + 2] = tracers[i].color.x;
-			data[index + 3] = tracers[i].color.y;
-			data[index + 4] = tracers[i].color.z;
+					if (newX >= 0 && newX < resolution && newY >= 0 && newY < resolution) {
+						float length = glm::length(glm::vec2(ix, iy));
+
+						if (length <= tracerRadius) {
+							int index = (newY * (fluidBox.size) + newX) * 5;
+
+							float power = length / 2.0f;
+
+							if (power == 0) {
+								power = 1;
+							}
+
+							data[index + 2] = tracers[i].color.x * power;
+							data[index + 3] = tracers[i].color.y * power;
+							data[index + 4] = tracers[i].color.z * power;
+						}
+					}
+				}
+			}
 		}
 	}
 }

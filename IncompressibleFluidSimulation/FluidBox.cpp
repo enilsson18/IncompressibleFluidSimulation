@@ -17,7 +17,7 @@ void constrain(int &num, int min, int max);
 void constrain(float &num, float min, float max);
 bool constrain(glm::vec2& vec, float min, float max);
 
-FluidBox::FluidBox(int size, int diffusion, int viscosity, float dt) {
+FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 	//setup(size, diffusion, viscosity, dt);
 	this->size = size;
 	this->diff = diffusion;
@@ -61,21 +61,23 @@ void FluidBox::update() {
 }
 
 void FluidBox::enforceBounds(std::vector<std::vector<float>> &v, int dim) {
+	float reflectPower = 1.0f;
+
 	// x
 	if (dim == 1) {
 		for (int y = 1; y < v.size() - 1; y++) {
-			v[y][0] = -v[y][1];
+			v[y][0] = -v[y][1] * reflectPower;
 
-			v[y][size - 1] = -v[y][size - 2];
+			v[y][size - 1] = -v[y][size - 2] * reflectPower;
 		}
 	}
 	
 	// y
 	if (dim == 2) {
 		for (int i = 1; i < size - 1; i++) {
-			v[0][i] = -v[1][i];
+			v[0][i] = -v[1][i] * reflectPower;
 
-			v[size - 1][i] = -v[size - 2][i];
+			v[size - 1][i] = -v[size - 2][i] * reflectPower;
 		}
 	}
 

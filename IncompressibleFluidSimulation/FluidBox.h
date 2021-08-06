@@ -71,7 +71,7 @@ public:
 	DynamicVector* velocityPrev;
 	DynamicVector* velocity;
 
-	FluidBox(int size, int diffusion, int viscosity, float dt);
+	FluidBox(int size, float diffusion, float viscosity, float dt);
 
 	void update();
 
