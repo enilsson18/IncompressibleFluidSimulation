@@ -18,6 +18,8 @@
 #include <glm/gtx/string_cast.hpp>
 
 #include "FluidBox.h"
+#include "RenderObject.h"
+#include "BlurGL.h"
 
 using namespace std;
 
@@ -112,27 +114,6 @@ struct FPSCounter {
 		if (sameLine) { std::cout << "\r"; }
 		std::cout << "FPS: " << storedFPS;
 		if (!sameLine) { std::cout << std::endl; }
-	}
-};
-
-struct RenderObject {
-	Shader shader;
-	unsigned int VAO;
-	unsigned int VBO;
-
-	float* data = nullptr;
-
-	RenderObject() {
-		glGenBuffers(1, &VBO);
-		glGenVertexArrays(1, &VAO);
-	}
-
-	void allocateMemory(int size) {
-		if (data != nullptr) {
-			delete[] data;
-		}
-
-		data = new float[size];
 	}
 };
 
