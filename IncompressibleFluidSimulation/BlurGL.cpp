@@ -15,7 +15,17 @@ BlurGL::BlurGL()
 	shader = Shader("resources/shaders/gausian_blur.vs", "resources/shaders/gausian_blur.fs");
 }
 
+BlurGL::BlurGL(int width, int height)
+{
+	shader = Shader("resources/shaders/gausian_blur.vs", "resources/shaders/gausian_blur.fs");
+
+	setup(width, height);
+}
+
 void BlurGL::setup(int width, int height) {
+	this->width = width;
+	this->height = height;
+
 	// clear just incase this is a reinitialization
 	glDeleteFramebuffers(1, &FBOX);
 	glDeleteFramebuffers(1, &FBOY);
@@ -71,10 +81,12 @@ void BlurGL::setup(int width, int height) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-unsigned int BlurGL::process(int width, int height, unsigned int inputTex)
+unsigned int &BlurGL::process(int width, int height, unsigned int &inputTex)
 {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	// check if the window size has changed or this is the first iteration
-	if (this->width != width || this->height != height) {
+	if (isSizeInvalid(width, height)) {
 		setup(width, height);
 	}
 
@@ -114,6 +126,14 @@ unsigned int BlurGL::process(int width, int height, unsigned int inputTex)
 	return outY;
 }
 
-unsigned int BlurGL::getBlur() {
+unsigned int &BlurGL::getBlur() {
 	return outY;
+}
+
+bool BlurGL::isSizeInvalid(int width, int height) {
+	if (this->width != width || this->height != height) {
+		return true;
+	}
+
+	return false;
 }

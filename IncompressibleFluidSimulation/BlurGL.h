@@ -25,11 +25,13 @@ public:
 
 	float strength;
 
-	RenderObject obj;
-
 	BlurGL();
-	void setup(int width, int height);
-	unsigned int process(int width, int height, unsigned int inputTex);
+	BlurGL(int width, int height);
 
-	unsigned int getBlur();
+	void setup(int width, int height);
+	unsigned int &process(int width, int height, unsigned int &inputTex);
+
+	unsigned int &getBlur();
+
+	bool isSizeInvalid(int width, int height);
 };

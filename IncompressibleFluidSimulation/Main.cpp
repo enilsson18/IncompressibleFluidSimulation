@@ -20,6 +20,7 @@
 #include "FluidBox.h"
 #include "RenderObject.h"
 #include "BlurGL.h"
+#include "Quad.h"
 
 using namespace std;
 
@@ -30,6 +31,7 @@ const double fps = 60;
 // control settings
 bool enableTracers = false;
 bool enableColor = true;
+bool enableBlur = true;
 
 string commandToRead;
 std::atomic<bool> enteredCommand;
@@ -129,22 +131,22 @@ void addMouseSwipeFluid();
 void addBlop(glm::vec2 pos, int radius, float densityInc, float velocityInc);
 void addMouseClickBlop();
 
-// functions
-void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode);
-void incrementColorIndex();
-glm::vec2 getScalingVec();
-glm::vec3 getColorSpect(float n, float m);
-
  // commands
 string enterCommand();
 std::vector<string> seperateStringBySpaces(string str);
 void printProcessCommandResult(bool result);
 bool processCommand(string command);
 
+// methods
 tuple<unsigned int, unsigned int> findWindowDims(float relativeScreenSize = 0.85, float aspectRatio = 1);
+void setupBlurFBO();
 void updateData(FluidBox &fluidBox, float* data);
 void updateBuffers(RenderObject* renderObject);
+void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMode);
 void updateForces(FluidBox& fluid);
+void incrementColorIndex();
+glm::vec2 getScalingVec();
+glm::vec3 getColorSpect(float n, float m);
 void containTracers(FluidBox& fluid, int min, int max);
 bool constrain(glm::vec2& vec, float min, float max);
 void constrain(float &num, float min, float max);
@@ -158,12 +160,20 @@ GLFWwindow* window;
 FluidBox* fluid;
 RenderObject* renderFluid;
 
+Shader renderToQuad;
+
+// fbo to give blur
+BlurGL* blur;
+unsigned int toBlurFBO;
+unsigned int toBlur;
+
 // control vars
 ControlMode controlMode;
 bool freeze;
 
 FPSCounter timer;
 
+// color stuff
 int colorIndex;
 int colorInc;
 int colorSpectSize;
@@ -224,6 +234,12 @@ void setup() {
 		std::cout << "Failed to initialize GLAD" << std::endl;
 	}
 
+	// main graphics setup
+	renderToQuad = Shader("resources/shaders/render_quad.vs", "resources/shaders/render_quad.fs");
+
+	blur = new BlurGL(SCR_WIDTH, SCR_HEIGHT);
+	setupBlurFBO();
+
 	// setup fluid render stuff
 	renderFluid = new RenderObject();
 	renderFluid->shader = Shader("resources/shaders/point_render.vs", "resources/shaders/point_render.fs", "resources/shaders/point_render.gs");
@@ -231,6 +247,36 @@ void setup() {
 
 	updateData(*fluid, renderFluid->data);
 	updateBuffers(renderFluid);
+}
+
+void setupBlurFBO() {
+	// clear just incase this is a reinitialization
+	glDeleteFramebuffers(1, &toBlurFBO);
+	glDeleteTextures(1, &toBlur);
+
+	//x values
+	//make the shadow buffer and bind it to quad fbo
+	glGenFramebuffers(1, &toBlurFBO);
+
+	//create an image representing base depth buffer
+	glGenTextures(1, &toBlur);
+	glBindTexture(GL_TEXTURE_2D, toBlur);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	//bind the buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, toBlurFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, toBlur, 0);
+	glEnable(GL_DEPTH_TEST);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void draw() {
@@ -243,6 +289,35 @@ void draw() {
 
 	glBindVertexArray(renderFluid->VAO);
 	glDrawArrays(GL_POINTS, 0, resolution * resolution);
+}
+
+void drawToBlur() {
+	// check if fbo needs to be updated based on the un-updated BlurGL parameters
+	if (blur->isSizeInvalid(SCR_WIDTH, SCR_HEIGHT)) {
+		setupBlurFBO();
+	}
+
+	// draw original output
+	glBindFramebuffer(GL_FRAMEBUFFER, toBlurFBO);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	draw();
+
+	// blur
+	unsigned int blurredOutput = blur->process(SCR_WIDTH, SCR_HEIGHT, toBlur);
+	
+	// render blurred output
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	renderToQuad.use();
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, blurredOutput);
+
+	Quad::render();
 }
 
 void updateFrame(FPSCounter& timer) {
@@ -260,7 +335,12 @@ void updateFrame(FPSCounter& timer) {
 	updateBuffers(renderFluid);
 
 	//draw
-	draw();
+	if (enableBlur) {
+		drawToBlur();
+	}
+	else {
+		draw();
+	}
 
 	mouse.update();
 
@@ -325,6 +405,8 @@ void listAllCommands() {
 		"set tracers disabled" << std::endl <<
 		"set colors enabled" << std::endl <<
 		"set colors disabled" << std::endl <<
+		"set blur enabled" << std::endl <<
+		"set blur disabled" << std::endl <<
 		"set dt" << std::endl <<
 		"set visc" << std::endl <<
 		"set diff" << std::endl <<
@@ -381,6 +463,19 @@ bool processCommand(string command) {
 					}
 					if (list[2] == "disabled") {
 						enableColor = false;
+						return true;
+					}
+				}
+			}
+
+			if (list[1] == "blur") {
+				if (list.size() > 2) {
+					if (list[2] == "enabled") {
+						enableBlur = true;
+						return true;
+					}
+					if (list[2] == "disabled") {
+						enableBlur = false;
 						return true;
 					}
 				}
