@@ -81,8 +81,11 @@ void BlurGL::setup(int width, int height) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-unsigned int &BlurGL::process(int width, int height, unsigned int &inputTex)
+unsigned int &BlurGL::process(int width, int height, unsigned int &inputTex,int blurIterations)
 {
+	// stop if no more 
+	if (blurIterations < 1) { return outY; }
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// check if the window size has changed or this is the first iteration
@@ -123,7 +126,8 @@ unsigned int &BlurGL::process(int width, int height, unsigned int &inputTex)
 	// reset buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	return outY;
+	// process more iterations if specified (if blurIterations - 1 is 0 or less then it will just return outY)
+	return process(this->width, this->height, outY, blurIterations - 1);
 }
 
 unsigned int &BlurGL::getBlur() {

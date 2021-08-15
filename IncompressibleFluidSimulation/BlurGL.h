@@ -29,7 +29,7 @@ public:
 	BlurGL(int width, int height);
 
 	void setup(int width, int height);
-	unsigned int &process(int width, int height, unsigned int &inputTex);
+	unsigned int &process(int width, int height, unsigned int &inputTex, int blurIterations = 1);
 
 	unsigned int &getBlur();
 

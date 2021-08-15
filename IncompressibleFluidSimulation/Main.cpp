@@ -31,7 +31,8 @@ const double fps = 60;
 // control settings
 bool enableTracers = false;
 bool enableColor = true;
-bool enableBlur = true;
+bool enableBlur = false;
+int blurIterations = 1;
 
 string commandToRead;
 std::atomic<bool> enteredCommand;
@@ -183,6 +184,9 @@ glm::vec3 defaultColor;
 glm::vec3 tracerColor;
 int tracerRadius;
 
+// key trackers
+bool fPressed;
+
 void setup() {
 	fluid = new FluidBox(resolution, 0.0f, 0.0000001f, 0.4f);
 	controlMode = ControlMode::MOUSE_SWIPE;
@@ -201,6 +205,8 @@ void setup() {
 
 	commandToRead = "";
 	enteredCommand.store(false);
+
+	fPressed = false;
 
 	// init graphics stuff
 	glfwInit();
@@ -304,7 +310,7 @@ void drawToBlur() {
 	draw();
 
 	// blur
-	unsigned int blurredOutput = blur->process(SCR_WIDTH, SCR_HEIGHT, toBlur);
+	unsigned int blurredOutput = blur->process(SCR_WIDTH, SCR_HEIGHT, toBlur, blurIterations);
 	
 	// render blurred output
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -407,11 +413,12 @@ void listAllCommands() {
 		"set colors disabled" << std::endl <<
 		"set blur enabled" << std::endl <<
 		"set blur disabled" << std::endl <<
-		"set dt" << std::endl <<
-		"set visc" << std::endl <<
-		"set diff" << std::endl <<
-		"set iter" << std::endl;
-
+		"set dt #.#" << std::endl <<
+		"set visc #.#" << std::endl <<
+		"set diff #.#" << std::endl <<
+		"set iter #" << std::endl <<
+		"freeze velocity" << std::endl <<
+		"unfreeze velocity" << std::endl;
 	std::cout << "--------------------" << std::endl;
 }
 
@@ -576,6 +583,24 @@ bool processCommand(string command) {
 		}
 	}
 
+	if (list[0] == "freeze") {
+		if (list.size() > 1) {
+			if (list[1] == "velocity") {
+				fluid->freezeVelocity();
+				return true;
+			}
+		}
+	}
+
+	if (list[0] == "unfreeze") {
+		if (list.size() > 1) {
+			if (list[1] == "velocity") {
+				fluid->unfreezeVelocity();
+				return true;
+			}
+		}
+	}
+
 	return false;
 }
 
@@ -600,6 +625,23 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 		incrementColorIndex();
 	}
 
+	// freeze velocity
+	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+		if (fPressed == false) {
+			if (fluid.getFreezeVelocity()) {
+				fluid.unfreezeVelocity();
+			}
+			else {
+				fluid.freezeVelocity();
+			}
+		}
+
+		fPressed = true;
+	}
+	else {
+		fPressed = false;
+	}
+
 	// clear screen controls
 	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
 		fluid.clear();
@@ -607,9 +649,9 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 
 	// enter commands
 	if (glfwGetKey(window, GLFW_KEY_SLASH) == GLFW_PRESS) {
-		string command = enterCommand();
+		//string command = enterCommand();
 
-		printProcessCommandResult(processCommand(command));
+		//printProcessCommandResult(processCommand(command));
 	}
 
 	// process key input
@@ -672,7 +714,9 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 				// skip if the pos is out of bounds
 				if (!constrain(cpos, 1, fluid.size - 2)) {
 					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color);
-					fluid.addVelocity(cpos, velocityInc * dir);
+					if (!fluid.getFreezeVelocity()) {
+						fluid.addVelocity(cpos, velocityInc * dir);
+					}
 				}
 			}
 		}

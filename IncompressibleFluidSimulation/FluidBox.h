@@ -60,6 +60,8 @@ public:
 
 	int updateCount = 0;
 
+	bool velocityFrozen;
+
 	// runtime vars
 	// density (one is the previous stored value and the other is the current value)
 	// First dimension refers to rgb
@@ -93,6 +95,10 @@ public:
 	void addTracer(glm::vec2 pos, glm::vec3 color);
 	void addDensity(glm::vec2 pos, float amount, glm::vec3 color = glm::vec3(1.0f));
 	void addVelocity(glm::vec2 pos, glm::vec2 amount);
+
+	void freezeVelocity();
+	void unfreezeVelocity();
+	bool getFreezeVelocity();
 
 	void clear();
 

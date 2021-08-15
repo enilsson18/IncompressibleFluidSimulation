@@ -26,6 +26,8 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 
 	this->divIter = 4;
 
+	velocityFrozen = false;
+
 	// init 2d arrays
 	clear();
 };
@@ -38,15 +40,17 @@ void FluidBox::update() {
 	vector<vector<float>>& vXList = velocity->getXList();
 	vector<vector<float>>& vYList = velocity->getYList();
 
-	diffuse(vPrevXList, vXList, 1);
-	diffuse(vPrevYList, vYList, 2);
+	if (!velocityFrozen) {
+		diffuse(vPrevXList, vXList, 1);
+		diffuse(vPrevYList, vYList, 2);
 
-	project(vPrevXList, vPrevYList, vXList, vYList);
+		project(vPrevXList, vPrevYList, vXList, vYList);
 
-	advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
-	advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
+		advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
+		advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
 
-	project(vXList, vYList, vPrevXList, vPrevYList);
+		project(vXList, vYList, vPrevXList, vPrevYList);
+	}
 
 	// applys advection for each color channel
 	for (int i = 0; i < 3; i++) {
@@ -251,6 +255,21 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
 
 	velocity->getXList()[pos.y][pos.x] += amount.x;
 	velocity->getYList()[pos.y][pos.x] += amount.y;
+}
+
+void FluidBox::freezeVelocity()
+{
+	velocityFrozen = true;
+}
+
+void FluidBox::unfreezeVelocity()
+{
+	velocityFrozen = false;
+}
+
+bool FluidBox::getFreezeVelocity()
+{
+	return velocityFrozen;
 }
 
 void FluidBox::clear() {
