@@ -26,6 +26,7 @@ Here is a complete command list:
 * "help" - Displays a list of all the commands.
 * "clear" - Clears the sim of all fluid density particles and or tracers.
 * "get fps" - Outputs the sim's current fps to the console.
+* "get res" - Outputs the resolution of the simulation.
 * "get dt" - Outputs the timestep of the simulation.
 * "get visc" - Outputs the viscosity of the fluid.
 * "get diff" - Outputs the diffusion of the fluid.
@@ -40,6 +41,7 @@ Here is a complete command list:
 * "unfreeze velocity" - Resumes normal velocity processing.
 
 Set Values for simulation by entering a number in place of #:
+* "set res #" - Sets the resolution for the simulation.
 * "set dt #.#" - Sets the timestep of the simulation.
 * "set visc #.#" - Sets the viscosity of the fluid.
 * "set diff #.#" - Sets the diffusion of the fluid.

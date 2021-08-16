@@ -403,6 +403,7 @@ void listAllCommands() {
 		"help" << std::endl <<
 		"clear" << std::endl <<
 		"get fps" << std::endl <<
+		"get res" << std::endl <<
 		"get dt" << std::endl <<
 		"get visc" << std::endl <<
 		"get diff" << std::endl <<
@@ -413,6 +414,7 @@ void listAllCommands() {
 		"set colors disabled" << std::endl <<
 		"set blur enabled" << std::endl <<
 		"set blur disabled" << std::endl <<
+		"set res #" << std::endl <<
 		"set dt #.#" << std::endl <<
 		"set visc #.#" << std::endl <<
 		"set diff #.#" << std::endl <<
@@ -488,6 +490,27 @@ bool processCommand(string command) {
 				}
 			}
 
+			if (list[1] == "resolution" || list[1] == "res") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stoi(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					constrain(num, 10, SCR_HEIGHT - 1);
+
+					resolution = num;
+					fluid->resetSize(resolution);
+
+					renderFluid->allocateMemory((resolution * resolution) * (2 + 3));
+
+					return true;
+				}
+			}
+
 			if (list[1] == "dt") {
 				if (list.size() > 2) {
 					float num;
@@ -551,23 +574,6 @@ bool processCommand(string command) {
 					return true;
 				}
 			}
-
-			if (list[1] == "resolution" || list[1] == "res") {
-				if (list.size() > 2) {
-					float num;
-					try {
-						num = std::stoi(list[2]);
-					}
-					catch (std::invalid_argument err) {
-						return false;
-					}
-
-					resolution = num;
-					fluid->resetSize(resolution);
-
-					return true;
-				}
-			}
 		}
 	}
 
@@ -575,6 +581,11 @@ bool processCommand(string command) {
 		if (list.size() > 1) {
 			if (list[1] == "fps") {
 				timer.printFPS();
+				return true;
+			}
+
+			if (list[1] == "resolution" || list[1] == "res") {
+				std::cout << "Resolution: " << resolution << std::endl;
 				return true;
 			}
 
