@@ -1,5 +1,6 @@
 // basic
 #include <iostream> 
+#include <algorithm>
 
 #include "FluidBox.h"
 
@@ -62,6 +63,55 @@ void FluidBox::update() {
 
 	//std::cout << velocity->getXList()[size / 2][size / 2] << std::endl;
 	//std::cout << simDensity[size / 2][size / 2] << std::endl;
+}
+
+void FluidBox::resetSize(int size) {
+	float scale = size/this->size;
+	int sizeToFit = min(this->size, size);
+
+	int prevSize = this->size;
+	this->size = size;
+
+	vector<vector<vector<float>>> tempPrevDensity = prevDensity;
+	vector<vector<vector<float>>> tempDensity = density;
+	vector<Tracer> tempTracers = tracers;
+	DynamicVector tempVelocityPrev = (*velocityPrev);
+	DynamicVector tempVelocity = (*velocity);
+
+	// reset to size
+	clear();
+
+	// copy data over into new array
+	// density
+	for (int i = 0; i < 3; i++) {
+		for (int y = 0; y < sizeToFit; y++) {
+			for (int x = 0; x < sizeToFit; x++) {
+				for (int y1 = 0; y1 < scale; y1++) {
+					for (int x1 = 0; x1 < scale; x1++) {
+						if (x1 + x < size && y1 + y < size) {
+							prevDensity[i][y * scale + y1][x * scale  + x1] = tempPrevDensity[i][y][x];
+							density[i][y * scale + y1][x * scale + x1] = tempDensity[i][y][x];
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// velocity
+	for (int i = 0; i < 2; i++) {
+		for (int y = 0; y < sizeToFit; y++) {
+			for (int x = 0; x < sizeToFit; x++) {
+				velocityPrev->vector[i][y * scale][x * scale] = tempVelocityPrev.vector[i][y][x];
+				velocity->vector[i][y * scale][x * scale] = tempVelocity.vector[i][y][x];
+			}
+		}
+	}
+
+	// tracers
+	for (int i = 0; i < tempTracers.size(); i++) {
+		addTracer(tempTracers[i].pos * scale, tempTracers[i].color);
+	}
 }
 
 void FluidBox::enforceBounds(std::vector<std::vector<float>> &v, int dim) {

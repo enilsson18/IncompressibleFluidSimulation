@@ -79,6 +79,8 @@ public:
 
 	void update();
 
+	void resetSize(int size);
+
 	void enforceBounds(std::vector<std::vector<float>> &v, int dim = 1);
 	void removeDivergence(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, float a, float c, int b);
 

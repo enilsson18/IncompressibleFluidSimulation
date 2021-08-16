@@ -25,8 +25,8 @@
 using namespace std;
 
 // settings
-const int resolution = 300;
-const double fps = 60;
+int resolution = 300;
+double fps = 60;
 
 // control settings
 bool enableTracers = false;
@@ -547,6 +547,23 @@ bool processCommand(string command) {
 					}
 
 					fluid->divIter = num;
+
+					return true;
+				}
+			}
+
+			if (list[1] == "resolution" || list[1] == "res") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stoi(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					resolution = num;
+					fluid->resetSize(resolution);
 
 					return true;
 				}
