@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\LibResources\include\shader.h" />
     <ClInclude Include="BlurGL.h" />
     <ClInclude Include="FluidBox.h" />
     <ClInclude Include="Quad.h" />

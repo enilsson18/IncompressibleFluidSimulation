@@ -31,8 +31,8 @@ double fps = 60;
 // control settings
 bool enableTracers = false;
 bool enableColor = true;
-bool enableBlur = false;
-int blurIterations = 1;
+bool enableBlur = true;
+int blurIterations = 10;
 
 string commandToRead;
 std::atomic<bool> enteredCommand;
@@ -408,6 +408,7 @@ void listAllCommands() {
 		"get visc" << std::endl <<
 		"get diff" << std::endl <<
 		"get iter" << std::endl <<
+		"get blur" << std::endl <<
 		"set tracers enabled" << std::endl <<
 		"set tracers disabled" << std::endl <<
 		"set colors enabled" << std::endl <<
@@ -419,6 +420,7 @@ void listAllCommands() {
 		"set visc #.#" << std::endl <<
 		"set diff #.#" << std::endl <<
 		"set iter #" << std::endl <<
+		"set blur #" << std::endl <<
 		"freeze velocity" << std::endl <<
 		"unfreeze velocity" << std::endl;
 	std::cout << "--------------------" << std::endl;
@@ -574,6 +576,22 @@ bool processCommand(string command) {
 					return true;
 				}
 			}
+
+			if (list[1] == "blur") {
+				if (list.size() > 2) {
+					float num;
+					try {
+						num = std::stoi(list[2]);
+					}
+					catch (std::invalid_argument err) {
+						return false;
+					}
+
+					blurIterations = num;
+
+					return true;
+				}
+			}
 		}
 	}
 
@@ -606,6 +624,11 @@ bool processCommand(string command) {
 
 			if (list[1] == "div_iter" || list[1] == "iter") {
 				std::cout << "Divergence Iterations: " << fluid->divIter << std::endl;
+				return true;
+			}
+
+			if (list[1] == "blur") {
+				std::cout << "Blur Iterations: " << blurIterations << std::endl;
 				return true;
 			}
 		}
