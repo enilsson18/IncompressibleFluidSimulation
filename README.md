@@ -31,6 +31,7 @@ Here is a complete command list:
 * "get visc" - Outputs the viscosity of the fluid.
 * "get diff" - Outputs the diffusion of the fluid.
 * "get iter" - Outputs the number of times a pressure gradient is normalized.
+* "get blur" - Outputs the number of times the display is blurred to smooth the fluid.
 * "set tracers enabled" - Enables the addition of tracers to the sim.
 * "set tracers disabled" - Disables the addition of tracers to the sim and removes all existing tracers.
 * "set colors enabled" - Enables traditional RGB channels in the fluid sim.
@@ -46,3 +47,4 @@ Set Values for simulation by entering a number in place of #:
 * "set visc #.#" - Sets the viscosity of the fluid.
 * "set diff #.#" - Sets the diffusion of the fluid.
 * "set iter #" - Sets the number of times a pressure gradient is normalized.
+* "set blur #" - Sets the number of times the display is blurred to smooth the fluid.
