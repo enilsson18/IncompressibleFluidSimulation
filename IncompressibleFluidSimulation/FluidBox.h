@@ -3,6 +3,11 @@
 // basic
 #include <iostream> 
 
+// graphics libs for calculations
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include "FBO.h"
+
 // vector and math lib
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -10,6 +15,7 @@
 #include <glm/gtx/string_cast.hpp>
 
 #include <vector>
+#include <algorithm>
 
 struct DynamicVector {
 	// (access dim, y, x)
