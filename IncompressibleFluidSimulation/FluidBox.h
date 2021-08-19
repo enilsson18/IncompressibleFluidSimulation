@@ -6,6 +6,7 @@
 // graphics libs for calculations
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <shader.h>
 #include "FBO.h"
 
 // vector and math lib
@@ -55,6 +56,12 @@ struct Tracer {
 	}
 };
 
+// absolute paths for the shaders
+const char* basicVertexShader = "resources/shaders/render_quad.vs";
+const char* diffuseFragmentShader = "resources/shaders/diffuse.fs";
+const char* projectFragmentShader = "resources/shaders/project.fs";
+const char* advectFragmentShader = "resources/shaders/advect.fs";
+
 class FluidBox {
 public:
 	// settings
@@ -68,18 +75,22 @@ public:
 
 	bool velocityFrozen;
 
+	// shaders for processing
+	Shader* diffuseShader;
+	Shader* projectShader;
+	Shader* advectShader;
+
 	// runtime vars
 	// density (one is the previous stored value and the other is the current value)
-	// First dimension refers to rgb
-	std::vector<std::vector<std::vector<float>>> prevDensity;
-	std::vector<std::vector<std::vector<float>>> density;
+	FBO* prevDensity;
+	FBO* density;
 
 	// Color Tracers (Each array contains the rgb float values "0-255")
 	std::vector<Tracer> tracers;
 
 	// velocity
-	DynamicVector* velocityPrev;
-	DynamicVector* velocity;
+	FBO* velocityPrev;
+	FBO* velocity;
 
 	FluidBox(int size, float diffusion, float viscosity, float dt);
 
@@ -107,6 +118,8 @@ public:
 	void freezeVelocity();
 	void unfreezeVelocity();
 	bool getFreezeVelocity();
+
+	void setupShaders();
 
 	void clear();
 

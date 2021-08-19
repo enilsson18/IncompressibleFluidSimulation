@@ -17,7 +17,9 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 
 	velocityFrozen = false;
 
-	// init 2d arrays
+	setupShaders();
+
+	// init arrays
 	clear();
 };
 
@@ -307,12 +309,19 @@ bool FluidBox::getFreezeVelocity()
 	return velocityFrozen;
 }
 
+void FluidBox::setupShaders()
+{
+	diffuseShader = new Shader(basicVertexShader, diffuseFragmentShader);
+	projectShader = new Shader(basicVertexShader, projectFragmentShader);
+	advectShader = new Shader(basicVertexShader, advectFragmentShader);
+}
+
 void FluidBox::clear() {
-	this->prevDensity = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
-	this->density = vector<vector<vector<float>>>(3, vector<vector<float>>(size, vector<float>(size, 0)));
+	this->prevDensity = new FBO(size, size);
+	this->density = new FBO(size, size);
 	this->tracers = vector<Tracer>();
-	this->velocityPrev = new DynamicVector(size, size);
-	this->velocity = new DynamicVector(size, size);
+	this->velocityPrev = new FBO(size, size);
+	this->velocity = new FBO(size, size);
 }
 
 void FluidBox::fadeDensity(float increment, float min, float max) {
