@@ -25,37 +25,39 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 
 // the main update step
 void FluidBox::update() {
-	vector<vector<float>>& vPrevXList = velocityPrev->getXList();
-	vector<vector<float>>& vPrevYList = velocityPrev->getYList();
-	
-	vector<vector<float>>& vXList = velocity->getXList();
-	vector<vector<float>>& vYList = velocity->getYList();
-
 	if (!velocityFrozen) {
-		diffuse(vPrevXList, vXList, 1);
-		diffuse(vPrevYList, vYList, 2);
+		// diffuse both dimensions
+		//diffuse(vPrevXList, vXList, 1);
+		//diffuse(vPrevYList, vYList, 2);
+		diffuse(1, velocityPrev, 0, velocity, 0);
+		diffuse(2, velocityPrev, 1, velocity, 1);
 
 		//project(vPrevXList, vPrevYList, vXList, vYList);
+		project(velocityPrev, velocity);
 
-		advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
-		advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
+		//advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
+		//advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
+		advect(1, velocityPrev, 0, velocityPrev, 1, velocity, 0, velocityPrev, 0);
+		advect(1, velocityPrev, 0, velocityPrev, 1, velocity, 0, velocityPrev, 0);
 
-		project(vXList, vYList, vPrevXList, vPrevYList);
+		//project(vXList, vYList, vPrevXList, vPrevYList);
+		project(velocity, velocityPrev);
 	}
 
 	// applys advection for each color channel
 	for (int i = 0; i < 3; i++) {
-		diffuse(prevDensity[i], density[i], 0);
-		advect(0, vXList, vYList, density[i], prevDensity[i]);
+		//diffuse(prevDensity[i], density[i], 0);
+		//advect(0, vXList, vYList, density[i], prevDensity[i]);
+		diffuse(0, prevDensity, i, density, i);
+		advect(0, velocity, 0, velocity, 1, density, i, prevDensity, i);
 	}
 
-	updateTracers();
-
-	//std::cout << velocity->getXList()[size / 2][size / 2] << std::endl;
-	//std::cout << simDensity[size / 2][size / 2] << std::endl;
+	// updateTracers();
 }
 
+
 void FluidBox::resetSize(int size) {
+	/*
 	float scale = size/this->size;
 	int sizeToFit = min(this->size, size);
 
@@ -99,6 +101,7 @@ void FluidBox::resetSize(int size) {
 
 		addTracer(vec, tempTracers[i].color);
 	}
+	*/
 }
 
 void FluidBox::enforceBounds(std::vector<std::vector<float>> &v, int dim) {
@@ -158,12 +161,12 @@ void FluidBox::removeDivergence(std::vector<std::vector<float>> &v, std::vector<
 	}
 }
 
-void FluidBox::diffuse(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, int b) {
+void FluidBox::diffuse(int b, FBO* v, int dimV, FBO* vPrev, int dimVPrev) {
 	float a = dt * diff * (size - 2) * (size - 2);
 	removeDivergence(v, vPrev, a, 1 + 4 * a, b);
 }
 
-void FluidBox::project(std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &p, std::vector<std::vector<float>> &div) {
+void FluidBox::project(FBO* v, FBO* pDiv) {
 	for (int y = 1; y < size - 1; y++) {
 		for (int x = 1; x < size - 1; x++) {
 			div[y][x] = -0.5f*(

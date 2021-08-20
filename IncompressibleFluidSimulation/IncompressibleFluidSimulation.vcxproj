@@ -131,12 +131,14 @@
   <ItemGroup>
     <ClInclude Include="..\LibResources\include\shader.h" />
     <ClInclude Include="BlurGL.h" />
+    <ClInclude Include="FBO.h" />
     <ClInclude Include="FluidBox.h" />
     <ClInclude Include="Quad.h" />
     <ClInclude Include="RenderObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BlurGL.cpp" />
+    <ClCompile Include="FBO.cpp" />
     <ClCompile Include="FluidBox.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="Main.cpp" />

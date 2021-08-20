@@ -101,8 +101,8 @@ public:
 	void enforceBounds(std::vector<std::vector<float>> &v, int dim = 1);
 	void removeDivergence(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, float a, float c, int b);
 
-	void diffuse(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, int b);
-	void project(std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &p, std::vector<std::vector<float>> &div);
+	void diffuse(int b, FBO* v, int dimV, FBO* vPrev, int dimVPrev);
+	void project(FBO* v, FBO* pDiv);
 	void advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0);
 
 	void updateTracers();
