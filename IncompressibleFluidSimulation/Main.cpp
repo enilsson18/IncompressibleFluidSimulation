@@ -41,84 +41,11 @@ std::atomic<bool> enteredCommand;
 int SCR_HEIGHT;
 int SCR_WIDTH;
 
+struct MouseData;
+
+struct FPSCounter;
+
 enum ControlMode { NONE = 0, DIRECTIONAL = 1, MOUSE_SWIPE = 2 };
-
-struct MouseData {
-	bool pressedL;
-	bool pressedR;
-	bool dragging;
-
-	bool prevPressedL;
-	bool prevPressedR;
-
-	//glm::vec2 pressPos;
-	//glm::vec2 releasePos;
-
-	glm::vec2 currentPos;
-	glm::vec2 lastPos;
-
-	MouseData() {
-		pressedL = false;
-		pressedR = false;
-		//pressPos = glm::vec2(0);
-		//releasePos = glm::vec2(0);
-		currentPos = glm::vec2(0);
-		lastPos = glm::vec2(0);
-	}
-
-	void update() {
-		prevPressedR = pressedR;
-		prevPressedL = pressedL;
-	}
-};
-
-struct FPSCounter {
-	std::chrono::system_clock::time_point now;
-	int fpsCount;
-	int fpsCounter;
-
-	int updateInterval = 60;
-
-	int storedFPS;
-
-	FPSCounter() {
-		fpsCount = 0;
-		fpsCounter = 0;
-		storedFPS = 0;
-	}
-
-	void start() {
-		now = std::chrono::system_clock::now();
-	}
-
-	void end() {
-		//end of timer sleep and normalize the clock
-		std::chrono::system_clock::time_point after = std::chrono::system_clock::now();
-		std::chrono::microseconds difference(std::chrono::time_point_cast<std::chrono::microseconds>(after) - std::chrono::time_point_cast<std::chrono::microseconds>(now));
-
-		int diffCount = difference.count();
-		if (diffCount == 0) {
-			diffCount = 1;
-		}
-
-		// apply fps to average
-		fpsCount += 1;
-		fpsCounter += 1000000 / diffCount;
-
-		if (fpsCount % int(updateInterval) == 0) {
-			storedFPS = fpsCounter / fpsCount;
-
-			fpsCount = 0;
-			fpsCounter = 0;
-		}
-	}
-
-	void printFPS(bool sameLine = false) {
-		if (sameLine) { std::cout << "\r"; }
-		std::cout << "FPS: " << storedFPS;
-		if (!sameLine) { std::cout << std::endl; }
-	}
-};
 
 //prototypes
 // callbacks
@@ -148,7 +75,6 @@ void updateForces(FluidBox& fluid);
 void incrementColorIndex();
 glm::vec2 getScalingVec();
 glm::vec3 getColorSpect(float n, float m);
-void containTracers(FluidBox& fluid, int min, int max);
 bool constrain(glm::vec2& vec, float min, float max);
 void constrain(float &num, float min, float max);
 
@@ -162,6 +88,7 @@ FluidBox* fluid;
 RenderObject* renderFluid;
 
 Shader renderToQuad;
+Shader textoQuad;
 
 // fbo to give blur
 BlurGL* blur;
@@ -286,15 +213,15 @@ void setupBlurFBO() {
 }
 
 void draw() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	renderFluid->shader.use();
-	renderFluid->shader.setFloat("sizeX", 2.0f / resolution);
-	renderFluid->shader.setFloat("sizeY", 2.0f / resolution);
+	renderToQuad.use();
+	fluid->density->useTex();
 
-	glBindVertexArray(renderFluid->VAO);
-	glDrawArrays(GL_POINTS, 0, resolution * resolution);
+	Quad::render();
 }
 
 void drawToBlur() {
@@ -778,21 +705,6 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 	}
 }
 
-void containTracers(FluidBox& fluid, int min, int max) {
-	for (int y = 0; y < fluid.size; y++) {
-		for (int x = 0; x < fluid.size; x++) {
-			for (int i = 0; i < fluid.density.size(); i++) {
-				if (fluid.density[i][y][x] < min) {
-					fluid.density[i][y][x] = min;
-				}
-				if (fluid.density[i][y][x] > max) {
-					fluid.density[i][y][x] = max;
-				}
-			}
-		}
-	}
-}
-
 void updateData(FluidBox &fluidBox, float* data) {
 	int index = 0;
 
@@ -1002,3 +914,80 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	mouse.lastPos = mouse.currentPos;
 	mouse.currentPos = glm::vec2(xpos, ypos);
 }
+
+struct MouseData {
+	bool pressedL;
+	bool pressedR;
+	bool dragging;
+
+	bool prevPressedL;
+	bool prevPressedR;
+
+	//glm::vec2 pressPos;
+	//glm::vec2 releasePos;
+
+	glm::vec2 currentPos;
+	glm::vec2 lastPos;
+
+	MouseData() {
+		pressedL = false;
+		pressedR = false;
+		//pressPos = glm::vec2(0);
+		//releasePos = glm::vec2(0);
+		currentPos = glm::vec2(0);
+		lastPos = glm::vec2(0);
+	}
+
+	void update() {
+		prevPressedR = pressedR;
+		prevPressedL = pressedL;
+	}
+};
+
+struct FPSCounter {
+	std::chrono::system_clock::time_point now;
+	int fpsCount;
+	int fpsCounter;
+
+	int updateInterval = 60;
+
+	int storedFPS;
+
+	FPSCounter() {
+		fpsCount = 0;
+		fpsCounter = 0;
+		storedFPS = 0;
+	}
+
+	void start() {
+		now = std::chrono::system_clock::now();
+	}
+
+	void end() {
+		//end of timer sleep and normalize the clock
+		std::chrono::system_clock::time_point after = std::chrono::system_clock::now();
+		std::chrono::microseconds difference(std::chrono::time_point_cast<std::chrono::microseconds>(after) - std::chrono::time_point_cast<std::chrono::microseconds>(now));
+
+		int diffCount = difference.count();
+		if (diffCount == 0) {
+			diffCount = 1;
+		}
+
+		// apply fps to average
+		fpsCount += 1;
+		fpsCounter += 1000000 / diffCount;
+
+		if (fpsCount % int(updateInterval) == 0) {
+			storedFPS = fpsCounter / fpsCount;
+
+			fpsCount = 0;
+			fpsCounter = 0;
+		}
+	}
+
+	void printFPS(bool sameLine = false) {
+		if (sameLine) { std::cout << "\r"; }
+		std::cout << "FPS: " << storedFPS;
+		if (!sameLine) { std::cout << std::endl; }
+	}
+};

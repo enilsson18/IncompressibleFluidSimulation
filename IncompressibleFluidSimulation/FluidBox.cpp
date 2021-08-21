@@ -29,16 +29,11 @@ void FluidBox::update() {
 		// diffuse both dimensions
 		//diffuse(vPrevXList, vXList, 1);
 		//diffuse(vPrevYList, vYList, 2);
-		diffuse(1, velocityPrev, 0, velocity, 0);
-		diffuse(2, velocityPrev, 1, velocity, 1);
-
-		//project(vPrevXList, vPrevYList, vXList, vYList);
-		project(velocityPrev, velocity);
+		diffuse(velocity);
 
 		//advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
 		//advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
-		advect(1, velocityPrev, 0, velocityPrev, 1, velocity, 0, velocityPrev, 0);
-		advect(1, velocityPrev, 0, velocityPrev, 1, velocity, 0, velocityPrev, 0);
+		advect(velocity, velocity);
 
 		//project(vXList, vYList, vPrevXList, vPrevYList);
 		project(velocity, velocityPrev);
@@ -161,12 +156,31 @@ void FluidBox::removeDivergence(std::vector<std::vector<float>> &v, std::vector<
 	}
 }
 
-void FluidBox::diffuse(int b, FBO* v, int dimV, FBO* vPrev, int dimVPrev) {
+void FluidBox::diffuse(FBO* v) {
 	float a = dt * diff * (size - 2) * (size - 2);
-	removeDivergence(v, vPrev, a, 1 + 4 * a, b);
+	float recip = 1 / (1 + 4 * a);
+
+	// run jacobi shader
+	v->bind();
+	jacobiShader->use();
+	
+	v->useTex(0);
+	v->useTex(1);
+
+	jacobiShader->setFloat("rdx", 1.0f / size);
+	jacobiShader->setFloat("a", a);
+	jacobiShader->setFloat("recip", a);
+
+	Quad::render();
+
+	v->unbind();
 }
 
-void FluidBox::project(FBO* v, FBO* pDiv) {
+void FluidBox::project(FBO* v, FBO* p, FBO* d) {
+	// run divergence shader
+
+	// run jacobi shader on pressure map with the new divergence
+
 	for (int y = 1; y < size - 1; y++) {
 		for (int x = 1; x < size - 1; x++) {
 			div[y][x] = -0.5f*(
@@ -193,37 +207,20 @@ void FluidBox::project(FBO* v, FBO* pDiv) {
 	enforceBounds(vy, 2);
 }
 
-void FluidBox::advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0) {
-	float i0, i1, j0, j1;
+void FluidBox::advect(FBO* v, FBO* d) {
+	// run advect shader
+	d->bind();
+	advectShader->use();
 
-	float dtx = dt * (size - 2);
-	float dty = dt * (size - 2);
+	v->useTex(0);
+	d->useTex(1);
 
-	float s0, s1, t0, t1;
+	advectShader->setFloat("rdx", 1.0f / size);
+	advectShader->setFloat("dt", dt);
 
-	float Nfloat = size;
+	Quad::render();
 
-	for (int j = 1; j < size - 1; j++) {
-		for (int i = 1; i < size - 1; i++) {
-			calcUpstreamCoords(Nfloat, vx[j][i], vy[j][i], dtx, dty, i, j, i0, i1, j0, j1, s0, s1, t0, t1);
-
-			int i0i = int(i0);
-			int i1i = int(i1);
-			int j0i = int(j0);
-			int j1i = int(j1);
-
-			constrain(i0i, 0, size - 1);
-			constrain(i1i, 0, size - 1);
-			constrain(j0i, 0, size - 1);
-			constrain(j1i, 0, size - 1);
-
-			d[j][i] =
-				s0 * (t0 * d0[j0i][i0i] + t1 * d0[j1i][i0i]) +
-				s1 * (t0 * d0[j0i][i1i] + t1 * d0[j1i][i1i]);
-		}
-	}
-
-	enforceBounds(d, b);
+	d->unbind();
 }
 
 void FluidBox::updateTracers() {
@@ -314,16 +311,16 @@ bool FluidBox::getFreezeVelocity()
 
 void FluidBox::setupShaders()
 {
-	diffuseShader = new Shader(basicVertexShader, diffuseFragmentShader);
-	projectShader = new Shader(basicVertexShader, projectFragmentShader);
+	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
+	divShader = new Shader(basicVertexShader, divergenceFragmentShader);
+	gradShader = new Shader(basicVertexShader, gradSubFragmentShader);
 	advectShader = new Shader(basicVertexShader, advectFragmentShader);
 }
 
 void FluidBox::clear() {
-	this->prevDensity = new FBO(size, size);
+	this->pressure = new FBO(size, size);
 	this->density = new FBO(size, size);
 	this->tracers = vector<Tracer>();
-	this->velocityPrev = new FBO(size, size);
 	this->velocity = new FBO(size, size);
 }
 

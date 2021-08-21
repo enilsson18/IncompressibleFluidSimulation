@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <shader.h>
 #include "FBO.h"
+#include "Quad.h"
 
 // vector and math lib
 #include <glm/glm.hpp>
@@ -58,8 +59,9 @@ struct Tracer {
 
 // absolute paths for the shaders
 const char* basicVertexShader = "resources/shaders/render_quad.vs";
-const char* diffuseFragmentShader = "resources/shaders/diffuse.fs";
-const char* projectFragmentShader = "resources/shaders/project.fs";
+const char* jacobiFragmentShader = "resources/shaders/jacobi.fs";
+const char* divergenceFragmentShader = "resources/shaders/divergence.fs";
+const char* gradSubFragmentShader = "resources/shaders/grad_sub.fs";
 const char* advectFragmentShader = "resources/shaders/advect.fs";
 
 class FluidBox {
@@ -76,20 +78,22 @@ public:
 	bool velocityFrozen;
 
 	// shaders for processing
-	Shader* diffuseShader;
-	Shader* projectShader;
+	Shader* jacobiShader;
+	Shader* divShader;
+	Shader* gradShader;
 	Shader* advectShader;
 
 	// runtime vars
+	// Pressure field
+	FBO* pressure;
+
 	// density (one is the previous stored value and the other is the current value)
-	FBO* prevDensity;
 	FBO* density;
 
 	// Color Tracers (Each array contains the rgb float values "0-255")
 	std::vector<Tracer> tracers;
 
 	// velocity
-	FBO* velocityPrev;
 	FBO* velocity;
 
 	FluidBox(int size, float diffusion, float viscosity, float dt);
@@ -101,9 +105,9 @@ public:
 	void enforceBounds(std::vector<std::vector<float>> &v, int dim = 1);
 	void removeDivergence(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, float a, float c, int b);
 
-	void diffuse(int b, FBO* v, int dimV, FBO* vPrev, int dimVPrev);
-	void project(FBO* v, FBO* pDiv);
-	void advect(int b, std::vector<std::vector<float>> &vx, std::vector<std::vector<float>> &vy, std::vector<std::vector<float>> &d, std::vector<std::vector<float>> &d0);
+	void diffuse(FBO* v);
+	void project(FBO* v, FBO* p, FBO* d);
+	void advect(FBO* v, FBO* d);
 
 	void updateTracers();
 
