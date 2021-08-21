@@ -25,7 +25,7 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 	this->visc = viscosity;
 	this->dt = dt;
 
-	this->divIter = 4;
+	this->divIter = 25;
 
 	velocityFrozen = false;
 
@@ -50,7 +50,7 @@ void FluidBox::update() {
 		advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
 		advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
 
-		project(vXList, vYList, vPrevXList, vPrevYList);
+		//project(vXList, vYList, vPrevXList, vPrevYList);
 	}
 
 	// applys advection for each color channel

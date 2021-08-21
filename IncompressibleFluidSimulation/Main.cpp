@@ -25,7 +25,7 @@
 using namespace std;
 
 // settings
-int resolution = 300;
+int resolution = 150;
 double fps = 60;
 
 // control settings
