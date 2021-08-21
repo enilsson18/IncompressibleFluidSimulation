@@ -45,12 +45,12 @@ void FluidBox::update() {
 		diffuse(vPrevXList, vXList, 1);
 		diffuse(vPrevYList, vYList, 2);
 
-		project(vPrevXList, vPrevYList, vXList, vYList);
+		//project(vPrevXList, vPrevYList, vXList, vYList);
 
 		advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
 		advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
 
-		//project(vXList, vYList, vPrevXList, vPrevYList);
+		project(vXList, vYList, vPrevXList, vPrevYList);
 	}
 
 	// applys advection for each color channel
