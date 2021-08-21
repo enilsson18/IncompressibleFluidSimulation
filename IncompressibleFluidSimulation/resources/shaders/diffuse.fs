@@ -4,6 +4,9 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
+// single texel size
+uniform float rdx;
+
 uniform float dt;
 uniform float diff;
 uniform float size;
@@ -12,21 +15,21 @@ uniform float size;
 uniform sampler2D texA;
 uniform sampler2D texB;
 
-vec4 diffuse(sampler2D texA, sampler2D texB, vec2 coords, float dt, float diff, float size){
+vec4 diffuse(sampler2D texA, sampler2D texB, vec2 coords, float dt, float diff, float size, float rdx){
 	float a = dt * diff * (size - 2) * (size - 2);
 	float recip = 1 / (1 + 4 * a);
 
 	return (
 		recip * texture(texB, coords) + 
 		a * (
-			texture(texA, coords + vec2(0, 1) +
-			texture(texA, coords + vec2(0, -1) +
-			texture(texA, coords + vec2(1, 0) +
-			texture(texA, coords + vec2(-1, 0)
+			texture(texA, coords + rdx * vec2(0, 1) +
+			texture(texA, coords + rdx * vec2(0, -1) +
+			texture(texA, coords + rdx * vec2(1, 0) +
+			texture(texA, coords + rdx * vec2(-1, 0)
 		)
 	);
 }
 
 void main(){
-	FragColor = vec4(vec3(diffuse(texA, texB, TexCoords, dt, diff, size)), 1.0);
+	FragColor = vec4(vec3(diffuse(texA, texB, TexCoords, dt, diff, size, rdx)), 1.0);
 }
