@@ -83,18 +83,22 @@ public:
 	Shader* gradShader;
 	Shader* advectShader;
 
-	// runtime vars
+	// Runtime vars
+	// Render box data
+	float interior[16];
+	float exterior[4][16];
+
 	// Pressure field
 	FBO* pressure;
-
 	// density (one is the previous stored value and the other is the current value)
 	FBO* density;
+	// velocity
+	FBO* velocity;
+	// temporary storage for the divergence mapping
+	FBO* div;
 
 	// Color Tracers (Each array contains the rgb float values "0-255")
 	std::vector<Tracer> tracers;
-
-	// velocity
-	FBO* velocity;
 
 	FluidBox(int size, float diffusion, float viscosity, float dt);
 
@@ -122,6 +126,8 @@ public:
 	void freezeVelocity();
 	void unfreezeVelocity();
 	bool getFreezeVelocity();
+
+	void recalculateRenderBoxes();
 
 	void setupShaders();
 

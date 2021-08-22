@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -16,6 +18,7 @@ public:
 	int width, height;
 
 	unsigned int fbo;
+	unsigned int rbo;
 	unsigned int texture;
 
 	FBO(int width, int height);

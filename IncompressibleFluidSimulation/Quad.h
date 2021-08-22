@@ -18,7 +18,16 @@
 #include <string>
 #include <iostream>
 
+float defaultVertices[] = {
+	// positions        // texture Coords
+	-1.0f,  1.0f, 0.0f, 1.0f,
+	-1.0f, -1.0f, 0.0f, 0.0f,
+	 1.0f,  1.0f, 1.0f, 1.0f,
+	 1.0f, -1.0f, 1.0f, 0.0f
+};
+
 static class Quad {
 public:
 	static void render();
+	static void customRender(float vertices[]);
 };

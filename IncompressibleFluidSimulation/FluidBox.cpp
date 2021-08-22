@@ -36,7 +36,7 @@ void FluidBox::update() {
 		advect(velocity, velocity);
 
 		//project(vXList, vYList, vPrevXList, vPrevYList);
-		project(velocity, velocityPrev);
+		project(velocity, pressure, div);
 	}
 
 	// applys advection for each color channel
@@ -166,7 +166,6 @@ void FluidBox::diffuse(FBO* v) {
 	
 	v->useTex(0);
 	v->useTex(1);
-
 	jacobiShader->setFloat("rdx", 1.0f / size);
 	jacobiShader->setFloat("a", a);
 	jacobiShader->setFloat("recip", a);
@@ -178,8 +177,42 @@ void FluidBox::diffuse(FBO* v) {
 
 void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	// run divergence shader
+	d->bind();
+	d->clear();
+	divShader->use();
+
+	v->useTex();
+	divShader->setFloat("rdx", 1.0f / size);
+
+	Quad::render();
 
 	// run jacobi shader on pressure map with the new divergence
+	p->bind();
+	p->clear();
+
+	for (int i = 0; i < divIter; i++) {
+		jacobiShader->use();
+
+		p->useTex(0);
+		d->useTex(1);
+		jacobiShader->setFloat("rdx", 1.0f / size);
+		jacobiShader->setFloat("a", 1);
+		jacobiShader->setFloat("recip", 4);
+
+		Quad::render();
+	}
+
+	// apply gradient subtraction to the velocity map
+	v->bind();
+	gradShader->use();
+
+	v->useTex(0);
+	p->useTex(1);
+	gradShader->setFloat("rdx", 1.0f / size);
+
+	Quad::render();
+
+	v->unbind();
 
 	for (int y = 1; y < size - 1; y++) {
 		for (int x = 1; x < size - 1; x++) {
@@ -309,6 +342,10 @@ bool FluidBox::getFreezeVelocity()
 	return velocityFrozen;
 }
 
+void FluidBox::recalculateRenderBoxes()
+{
+}
+
 void FluidBox::setupShaders()
 {
 	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
@@ -322,6 +359,7 @@ void FluidBox::clear() {
 	this->density = new FBO(size, size);
 	this->tracers = vector<Tracer>();
 	this->velocity = new FBO(size, size);
+	this->div = new FBO(size, size);
 }
 
 void FluidBox::fadeDensity(float increment, float min, float max) {

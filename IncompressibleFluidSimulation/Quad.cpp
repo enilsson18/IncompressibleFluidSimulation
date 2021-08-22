@@ -2,16 +2,13 @@
 
 void Quad::render()
 {
+	customRender(defaultVertices);
+}
+
+void Quad::customRender(float vertices[])
+{
 	unsigned int VBO;
 	unsigned int VAO;
-
-	float vertices[] = {
-		// positions        // texture Coords
-		-1.0f,  1.0f, 0.0f, 1.0f,
-		-1.0f, -1.0f, 0.0f, 0.0f,
-		 1.0f,  1.0f, 1.0f, 1.0f,
-		 1.0f, -1.0f, 1.0f, 0.0f
-	};
 
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
