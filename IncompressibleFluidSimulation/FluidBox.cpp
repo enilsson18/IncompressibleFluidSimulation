@@ -99,60 +99,25 @@ void FluidBox::resetSize(int size) {
 	*/
 }
 
-void FluidBox::enforceBounds(std::vector<std::vector<float>> &v, int dim) {
-	float reflectPower = 1.0f;
+void FluidBox::enforceBounds(FBO* x, float scale) {
+	x->bind();
 
-	// x
-	if (dim == 1) {
-		for (int y = 1; y < v.size() - 1; y++) {
-			v[y][0] = -v[y][1] * reflectPower;
+	float texel = 1.0f / size;
 
-			v[y][size - 1] = -v[y][size - 2] * reflectPower;
-		}
-	}
-	
-	// y
-	if (dim == 2) {
-		for (int i = 1; i < size - 1; i++) {
-			v[0][i] = -v[1][i] * reflectPower;
+	glm::vec2 offsetList[4] = {
+		glm::vec2(0, -1),
+		glm::vec2(-1, 0),
+		glm::vec2(0, 1),
+		glm::vec2(1, 0)
+	};
 
-			v[size - 1][i] = -v[size - 2][i] * reflectPower;
-		}
-	}
+	for (int i = 0; i < 4; i++) {
+		boundShader->use();
+		x->useTex();
+		boundShader->setFloat("scale", scale);
+		boundShader->setVec2("offset", offsetList[i] * texel);
 
-	// top left
-	v[0][0] = 0.5f * (v[0][1] + v[1][0]);
-
-	// top right
-	v[0][size-1] = 0.5f * (v[0][size-2] + v[1][size-1]);
-
-	// bottom right
-	v[size-1][size-1] = 0.5f * (v[size-1][size-2] + v[size-2][size-1]);
-
-	//bottom left
-	v[size-1][0] = 0.5f * (v[size-2][0] + v[size-1][1]);
-}
-
-// Accounts for divergence in the velocity vectors
-void FluidBox::removeDivergence(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, float a, float c, int b) {
-	float cRecip = 1 / c;
-
-	for (int i = 0; i < divIter; i++) {
-		for (int y = 1; y < size - 1; y++) {
-			for (int x = 1; x < size - 1; x++) {
-				// remove divergence for each coord
-				v[y][x] = (vPrev[y][x] +
-					a * (
-						v[y + 1][x] +
-						v[y - 1][x] +
-						v[y][x + 1] +
-						v[y][x - 1]
-						)
-					) * cRecip;
-			}
-		}
-
-		enforceBounds(v, b);
+		renderExterior(i);
 	}
 }
 
@@ -186,6 +151,10 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 
 	Quad::render();
 
+	// enforce bounds on div map and pressure map
+	enforceBounds(p, 1);
+	enforceBounds(div, -1);
+
 	// run jacobi shader on pressure map with the new divergence
 	p->bind();
 	p->clear();
@@ -214,30 +183,7 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 
 	v->unbind();
 
-	for (int y = 1; y < size - 1; y++) {
-		for (int x = 1; x < size - 1; x++) {
-			div[y][x] = -0.5f*(
-				  vx[y][x+1]
-				- vx[y][x-1]
-				+ vy[y+1][x]
-				- vy[y-1][x]
-				) / size;
-			p[y][x] = 0;
-		}
-	}
-
-	enforceBounds(p);
-	enforceBounds(div);
-	removeDivergence(p, div, 1, 4, 0);
-
-	for (int y = 1; y < size - 1; y++) {
-		for (int x = 1; x < size - 1; x++) {
-			vx[y][x] -= 0.5f * (p[y][x+1] - p[y][x-1]) * size;
-			vy[y][x] -= 0.5f * (p[y+1][x] - p[y-1][x]) * size;
-		}
-	}
-	enforceBounds(vx, 1);
-	enforceBounds(vy, 2);
+	// enforce the bounds on the velocity map
 }
 
 void FluidBox::advect(FBO* v, FBO* d) {
@@ -275,29 +221,6 @@ void FluidBox::updateTracers() {
 
 		constrain(tracers[i].pos, 0, size - 1);
 	}
-}
-
-void FluidBox::calcUpstreamCoords(float Nfloat, float vx, float vy, float dtx, float dty, int i, int j, float &i0, float &i1, float &j0, float &j1, float &s0, float &s1, float &t0, float &t1) {
-	float tmp1, tmp2, x, y;
-
-	tmp1 = dtx * vx;
-	tmp2 = dty * vy;
-	x = i - tmp1;
-	y = j - tmp2;
-
-	if (x < 0.5f) x = 0.5f;
-	if (x > Nfloat + 0.5f) x = Nfloat + 0.5f;
-	i0 = floor(x);
-	i1 = i0 + 1.0f;
-	if (y < 0.5f) y = 0.5f;
-	if (y > Nfloat + 0.5f) y = Nfloat + 0.5f;
-	j0 = floor(y);
-	j1 = j0 + 1.0f;
-
-	s1 = x - i0;
-	s0 = 1.0f - s1;
-	t1 = y - j0;
-	t0 = 1.0f - t1;
 }
 
 void FluidBox::addTracer(glm::vec2 pos, glm::vec3 color) {
@@ -342,12 +265,18 @@ bool FluidBox::getFreezeVelocity()
 	return velocityFrozen;
 }
 
+// rotates a point clockwise by 90 degrees about the origin
+glm::vec2 rotateND(glm::vec2 point) {
+	return glm::vec2(point.y, -point.x);
+}
+
 void FluidBox::recalculateRenderBoxes()
 {
 	float texel = 1.0f / size;
-	float pos = 1 - texel;
 
 	// Set interior (Leave 1 texel border excluded)
+	float pos = 1 - texel;
+
 	float newInterior[] = {
 		// positions
 		-pos,  pos,
@@ -363,37 +292,40 @@ void FluidBox::recalculateRenderBoxes()
 
 	// Set exterior moving in the order top, right, bottom, left.
 	// Each row includes both corners for processing.
-	glm::vec2 sides[] = {
-		glm::vec2(0, 1),
-		glm::vec2(1, 0),
-		glm::vec2(0, -1),
-		glm::vec2(-1, 0),
+	glm::vec2 points[] = {
+		// top left
+		glm::vec2(-1, 1),
+		// bottom left
+		glm::vec2(-1, 1 - texel),
+		// top right
+		glm::vec2(1, 1),
+		// bottom right
+		glm::vec2(1, 1 - texel),
 	};
 
 	for (int i = 0; i < 4; i++) {
-		// long ways direction of the box
-		glm::vec2 dir = sides[(i + 1) % 4];
-
-		// Adjusted to be scaled to a (-1 to 1) range
-		glm::vec2 side = sides[i] * 2.0f - glm::vec2(1);
-
-		float temp[8] = {
-			// relative info
-			// top left
-			(side.x - dir.x), (side.y - dir.y),
-			// bottom left
-			(side.x - dir.x), (side.y - dir.y) - (dir.y * texel),
-			// top right
-			(side.x - dir.x) + (dir.x * size), (side.y - dir.y),
-			// bottom right
-			(side.x - dir.x) + (dir.x * size), (side.y - dir.y) - (dir.y * texel)
-		};
+		for (int j = 0; j < 4; j++) {
+			points[j] = rotateND(points[j]);
+			exterior[i][j * 4] = points[j].x;
+			exterior[i][j * 4 + 1] = points[j].y;
+		}
 	}
+}
+
+void FluidBox::renderInterior()
+{
+	Quad::customRender(interior);
+}
+
+void FluidBox::renderExterior(int i)
+{
+	Quad::customRender(exterior[i]);
 }
 
 void FluidBox::setupShaders()
 {
 	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
+	boundShader = new Shader(basicVertexShader, boundFragmentShader);
 	divShader = new Shader(basicVertexShader, divergenceFragmentShader);
 	gradShader = new Shader(basicVertexShader, gradSubFragmentShader);
 	advectShader = new Shader(basicVertexShader, advectFragmentShader);

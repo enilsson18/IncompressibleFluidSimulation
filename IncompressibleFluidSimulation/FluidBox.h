@@ -59,6 +59,7 @@ struct Tracer {
 
 // absolute paths for the shaders
 const char* basicVertexShader = "resources/shaders/render_quad.vs";
+const char* boundFragmentShader = "resources/shaders/enforce_bounds.fs";
 const char* jacobiFragmentShader = "resources/shaders/jacobi.fs";
 const char* divergenceFragmentShader = "resources/shaders/divergence.fs";
 const char* gradSubFragmentShader = "resources/shaders/grad_sub.fs";
@@ -78,6 +79,7 @@ public:
 	bool velocityFrozen;
 
 	// shaders for processing
+	Shader* boundShader;
 	Shader* jacobiShader;
 	Shader* divShader;
 	Shader* gradShader;
@@ -106,8 +108,7 @@ public:
 
 	void resetSize(int size);
 
-	void enforceBounds(std::vector<std::vector<float>> &v, int dim = 1);
-	void removeDivergence(std::vector<std::vector<float>> &v, std::vector<std::vector<float>> &vPrev, float a, float c, int b);
+	void enforceBounds(FBO* x, float scale);
 
 	void diffuse(FBO* v);
 	void project(FBO* v, FBO* p, FBO* d);
@@ -129,7 +130,7 @@ public:
 
 	void recalculateRenderBoxes();
 	void renderInterior();
-	void renderExterior();
+	void renderExterior(int i);
 
 	void setupShaders();
 
