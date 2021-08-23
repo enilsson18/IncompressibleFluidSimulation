@@ -344,6 +344,51 @@ bool FluidBox::getFreezeVelocity()
 
 void FluidBox::recalculateRenderBoxes()
 {
+	float texel = 1.0f / size;
+	float pos = 1 - texel;
+
+	// Set interior (Leave 1 texel border excluded)
+	float newInterior[] = {
+		// positions
+		-pos,  pos,
+		-pos, -pos,
+		 pos,  pos,
+		 pos, -pos
+	};
+
+	for (int i = 0; i < 16; i += 4) {
+		interior[i] = newInterior[i / 2];
+		interior[i + 1] = newInterior[i / 2 + 1];
+	}
+
+	// Set exterior moving in the order top, right, bottom, left.
+	// Each row includes both corners for processing.
+	glm::vec2 sides[] = {
+		glm::vec2(0, 1),
+		glm::vec2(1, 0),
+		glm::vec2(0, -1),
+		glm::vec2(-1, 0),
+	};
+
+	for (int i = 0; i < 4; i++) {
+		// long ways direction of the box
+		glm::vec2 dir = sides[(i + 1) % 4];
+
+		// Adjusted to be scaled to a (-1 to 1) range
+		glm::vec2 side = sides[i] * 2.0f - glm::vec2(1);
+
+		float temp[8] = {
+			// relative info
+			// top left
+			(side.x - dir.x), (side.y - dir.y),
+			// bottom left
+			(side.x - dir.x), (side.y - dir.y) - (dir.y * texel),
+			// top right
+			(side.x - dir.x) + (dir.x * size), (side.y - dir.y),
+			// bottom right
+			(side.x - dir.x) + (dir.x * size), (side.y - dir.y) - (dir.y * texel)
+		};
+	}
 }
 
 void FluidBox::setupShaders()

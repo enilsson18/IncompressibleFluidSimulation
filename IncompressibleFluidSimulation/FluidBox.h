@@ -128,6 +128,8 @@ public:
 	bool getFreezeVelocity();
 
 	void recalculateRenderBoxes();
+	void renderInterior();
+	void renderExterior();
 
 	void setupShaders();
 
