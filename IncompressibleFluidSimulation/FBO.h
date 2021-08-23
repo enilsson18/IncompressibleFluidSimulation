@@ -12,7 +12,7 @@
 
 class FBO {
 public:
-	static int idCount;
+	inline static int idCount;
 	int id;
 
 	int width, height;

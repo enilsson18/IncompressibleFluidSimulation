@@ -31,7 +31,7 @@ double fps = 60;
 // control settings
 bool enableTracers = false;
 bool enableColor = true;
-bool enableBlur = true;
+bool enableBlur = false;
 int blurIterations = 10;
 
 string commandToRead;
@@ -41,9 +41,83 @@ std::atomic<bool> enteredCommand;
 int SCR_HEIGHT;
 int SCR_WIDTH;
 
-struct MouseData;
 
-struct FPSCounter;
+struct MouseData {
+	bool pressedL;
+	bool pressedR;
+	bool dragging;
+
+	bool prevPressedL;
+	bool prevPressedR;
+
+	//glm::vec2 pressPos;
+	//glm::vec2 releasePos;
+
+	glm::vec2 currentPos;
+	glm::vec2 lastPos;
+
+	MouseData() {
+		pressedL = false;
+		pressedR = false;
+		//pressPos = glm::vec2(0);
+		//releasePos = glm::vec2(0);
+		currentPos = glm::vec2(0);
+		lastPos = glm::vec2(0);
+	}
+
+	void update() {
+		prevPressedR = pressedR;
+		prevPressedL = pressedL;
+	}
+};
+
+struct FPSCounter {
+	std::chrono::system_clock::time_point now;
+	int fpsCount;
+	int fpsCounter;
+
+	int updateInterval = 60;
+
+	int storedFPS;
+
+	FPSCounter() {
+		fpsCount = 0;
+		fpsCounter = 0;
+		storedFPS = 0;
+	}
+
+	void start() {
+		now = std::chrono::system_clock::now();
+	}
+
+	void end() {
+		//end of timer sleep and normalize the clock
+		std::chrono::system_clock::time_point after = std::chrono::system_clock::now();
+		std::chrono::microseconds difference(std::chrono::time_point_cast<std::chrono::microseconds>(after) - std::chrono::time_point_cast<std::chrono::microseconds>(now));
+
+		int diffCount = difference.count();
+		if (diffCount == 0) {
+			diffCount = 1;
+		}
+
+		// apply fps to average
+		fpsCount += 1;
+		fpsCounter += 1000000 / diffCount;
+
+		if (fpsCount % int(updateInterval) == 0) {
+			storedFPS = fpsCounter / fpsCount;
+
+			fpsCount = 0;
+			fpsCounter = 0;
+		}
+	}
+
+	void printFPS(bool sameLine = false) {
+		if (sameLine) { std::cout << "\r"; }
+		std::cout << "FPS: " << storedFPS;
+		if (!sameLine) { std::cout << std::endl; }
+	}
+};
 
 enum ControlMode { NONE = 0, DIRECTIONAL = 1, MOUSE_SWIPE = 2 };
 
@@ -115,7 +189,6 @@ int tracerRadius;
 bool fPressed;
 
 void setup() {
-	fluid = new FluidBox(resolution, 0.0f, 0.0000001f, 0.4f);
 	controlMode = ControlMode::MOUSE_SWIPE;
 	freeze = false;
 
@@ -167,6 +240,9 @@ void setup() {
 		std::cout << "Failed to initialize GLAD" << std::endl;
 	}
 
+	// init fluid (since it uses the glfw, it must be made after the glfw instance)
+	fluid = new FluidBox(resolution, 0.0f, 0.0000001f, 0.4f);
+
 	// main graphics setup
 	renderToQuad = Shader("resources/shaders/render_quad.vs", "resources/shaders/render_quad.fs");
 
@@ -213,6 +289,7 @@ void setupBlurFBO() {
 }
 
 void draw() {
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -260,12 +337,12 @@ void updateFrame(FPSCounter& timer) {
 
 	// update frame
 	if (!freeze) {
-		fluid->update();
+		//fluid->update();
 		fluid->fadeDensity(0.05f, 0, 255);
 	}
 
-	updateData(*fluid, renderFluid->data);
-	updateBuffers(renderFluid);
+	//updateData(*fluid, renderFluid->data);
+	//updateBuffers(renderFluid);
 
 	//draw
 	if (enableBlur) {
@@ -655,7 +732,8 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 
 void addMouseSwipeFluid() {
 	// An arbitrary number used for scaling the addition of fluid
-	float densityMultiplier = 0.05f;
+	//float densityMultiplier = 0.05f;
+	float densityMultiplier = 0.001f;
 	float velocityMultiplier = 0.0025f;
 	glm::vec2 scaling = getScalingVec();
 
@@ -673,7 +751,7 @@ void addMouseSwipeFluid() {
 	addDirectionalFluid(*fluid, brushSize, densityInc, velocityInc, position, direction, color);
 }
 
-void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float velocityInc, glm::vec2 pos, glm::vec2 dir, glm::vec3 color){
+void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float velocityInc, glm::vec2 pos, glm::vec2 dir, glm::vec3 color) {
 	// create limits for the increments to prevent too much velocity being added (can make divergence unsolvable) and also limits the density
 	constrain(densityInc, 0, 50);
 	constrain(velocityInc, 0, 0.15f);
@@ -684,21 +762,11 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 		color = glm::vec3(defaultColor);
 	}
 
-	for (int y = -brushSize; y < brushSize; y++) {
-		for (int x = -brushSize; x < brushSize; x++) {
-			// make a circle for the density and velocity to be added
-			if (glm::length(glm::vec2(x, y)) <= brushSize) {
-				glm::vec2 cpos = glm::vec2(pos.x + x, pos.y + y);
-				// skip if the pos is out of bounds
-				if (!constrain(cpos, 1, fluid.size - 2)) {
-					fluid.addDensity(cpos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color);
-					if (!fluid.getFreezeVelocity()) {
-						fluid.addVelocity(cpos, velocityInc * dir);
-					}
-				}
-			}
-		}
+	fluid.addDensity(pos, densityInc * (float(std::rand()) / INT_MAX + 0.5f), color, brushSize);
+	if (!fluid.getFreezeVelocity()) {
+		fluid.addVelocity(pos, velocityInc * dir, brushSize);
 	}
+
 
 	if (enableTracers) {
 		fluid.addTracer(pos, tracerColor);
@@ -914,80 +982,3 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	mouse.lastPos = mouse.currentPos;
 	mouse.currentPos = glm::vec2(xpos, ypos);
 }
-
-struct MouseData {
-	bool pressedL;
-	bool pressedR;
-	bool dragging;
-
-	bool prevPressedL;
-	bool prevPressedR;
-
-	//glm::vec2 pressPos;
-	//glm::vec2 releasePos;
-
-	glm::vec2 currentPos;
-	glm::vec2 lastPos;
-
-	MouseData() {
-		pressedL = false;
-		pressedR = false;
-		//pressPos = glm::vec2(0);
-		//releasePos = glm::vec2(0);
-		currentPos = glm::vec2(0);
-		lastPos = glm::vec2(0);
-	}
-
-	void update() {
-		prevPressedR = pressedR;
-		prevPressedL = pressedL;
-	}
-};
-
-struct FPSCounter {
-	std::chrono::system_clock::time_point now;
-	int fpsCount;
-	int fpsCounter;
-
-	int updateInterval = 60;
-
-	int storedFPS;
-
-	FPSCounter() {
-		fpsCount = 0;
-		fpsCounter = 0;
-		storedFPS = 0;
-	}
-
-	void start() {
-		now = std::chrono::system_clock::now();
-	}
-
-	void end() {
-		//end of timer sleep and normalize the clock
-		std::chrono::system_clock::time_point after = std::chrono::system_clock::now();
-		std::chrono::microseconds difference(std::chrono::time_point_cast<std::chrono::microseconds>(after) - std::chrono::time_point_cast<std::chrono::microseconds>(now));
-
-		int diffCount = difference.count();
-		if (diffCount == 0) {
-			diffCount = 1;
-		}
-
-		// apply fps to average
-		fpsCount += 1;
-		fpsCounter += 1000000 / diffCount;
-
-		if (fpsCount % int(updateInterval) == 0) {
-			storedFPS = fpsCounter / fpsCount;
-
-			fpsCount = 0;
-			fpsCounter = 0;
-		}
-	}
-
-	void printFPS(bool sameLine = false) {
-		if (sameLine) { std::cout << "\r"; }
-		std::cout << "FPS: " << storedFPS;
-		if (!sameLine) { std::cout << std::endl; }
-	}
-};

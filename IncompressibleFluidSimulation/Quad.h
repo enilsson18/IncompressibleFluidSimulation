@@ -18,16 +18,10 @@
 #include <string>
 #include <iostream>
 
-float defaultVertices[] = {
-	// positions        // texture Coords
-	-1.0f,  1.0f, 0.0f, 1.0f,
-	-1.0f, -1.0f, 0.0f, 0.0f,
-	 1.0f,  1.0f, 1.0f, 1.0f,
-	 1.0f, -1.0f, 1.0f, 0.0f
-};
-
-static class Quad {
+class Quad {
+private:
+	static float defaultVertices[16];
 public:
 	static void render();
-	static void customRender(float vertices[]);
+	static void customRender(float* vertices);
 };

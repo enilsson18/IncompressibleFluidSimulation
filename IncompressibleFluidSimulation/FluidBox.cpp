@@ -19,6 +19,8 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 
 	setupShaders();
 
+	recalculateRenderBoxes();
+
 	// init arrays
 	clear();
 };
@@ -30,22 +32,21 @@ void FluidBox::update() {
 		//diffuse(vPrevXList, vXList, 1);
 		//diffuse(vPrevYList, vYList, 2);
 		diffuse(velocity);
+		enforceBounds(velocity, -1.0f);
 
 		//advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
 		//advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
 		advect(velocity, velocity);
+		enforceBounds(velocity, -1.0f);
 
 		//project(vXList, vYList, vPrevXList, vPrevYList);
 		project(velocity, pressure, div);
 	}
 
-	// applys advection for each color channel
-	for (int i = 0; i < 3; i++) {
-		//diffuse(prevDensity[i], density[i], 0);
-		//advect(0, vXList, vYList, density[i], prevDensity[i]);
-		diffuse(0, prevDensity, i, density, i);
-		advect(0, velocity, 0, velocity, 1, density, i, prevDensity, i);
-	}
+	//diffuse(prevDensity[i], density[i], 0);
+	//advect(0, vXList, vYList, density[i], prevDensity[i]);
+	diffuse(density);
+	advect(velocity, density);
 
 	// updateTracers();
 }
@@ -119,6 +120,8 @@ void FluidBox::enforceBounds(FBO* x, float scale) {
 
 		renderExterior(i);
 	}
+
+	x->unbind();
 }
 
 void FluidBox::diffuse(FBO* v) {
@@ -143,21 +146,17 @@ void FluidBox::diffuse(FBO* v) {
 void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	// run divergence shader
 	d->bind();
-	d->clear();
+	d->clear(); // reset image to blank state
 	divShader->use();
 
 	v->useTex();
 	divShader->setFloat("rdx", 1.0f / size);
 
-	Quad::render();
-
-	// enforce bounds on div map and pressure map
-	enforceBounds(p, 1);
-	enforceBounds(div, -1);
+	renderInterior();
 
 	// run jacobi shader on pressure map with the new divergence
 	p->bind();
-	p->clear();
+	p->clear(); // reset image to blank state
 
 	for (int i = 0; i < divIter; i++) {
 		jacobiShader->use();
@@ -168,8 +167,11 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 		jacobiShader->setFloat("a", 1);
 		jacobiShader->setFloat("recip", 4);
 
-		Quad::render();
+		renderInterior();
 	}
+
+	// contain the pressure
+	enforceBounds(p, 1.0f);
 
 	// apply gradient subtraction to the velocity map
 	v->bind();
@@ -179,11 +181,12 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	p->useTex(1);
 	gradShader->setFloat("rdx", 1.0f / size);
 
-	Quad::render();
+	renderInterior();
 
 	v->unbind();
 
 	// enforce the bounds on the velocity map
+	enforceBounds(v, -1.0f);
 }
 
 void FluidBox::advect(FBO* v, FBO* d) {
@@ -197,30 +200,11 @@ void FluidBox::advect(FBO* v, FBO* d) {
 	advectShader->setFloat("rdx", 1.0f / size);
 	advectShader->setFloat("dt", dt);
 
-	Quad::render();
-
 	d->unbind();
 }
 
 void FluidBox::updateTracers() {
-	float i0, i1, j0, j1;
-
-	float dtx = dt * (size - 2);
-	float dty = dt * (size - 2);
-
-	float s0, s1, t0, t1;
-
-	float Nfloat = size;
-
-	for (int i = 0; i < tracers.size(); i++) {
-		calcUpstreamCoords(Nfloat, velocity->getVec(tracers[i].pos).x, velocity->getVec(tracers[i].pos).y, dtx, dty, tracers[i].pos.x, tracers[i].pos.y, i0, i1, j0, j1, s0, s1, t0, t1);
-
-		tracers[i].pos +=
-			s0 * (t0 * (tracers[i].pos - glm::vec2(i0, j0)) + t1 * (tracers[i].pos - glm::vec2(i0, j1))) +
-			s1 * (t0 * (tracers[i].pos - glm::vec2(i1, j0)) + t1 * (tracers[i].pos - glm::vec2(i1, j1))) - glm::vec2(0.5f);
-
-		constrain(tracers[i].pos, 0, size - 1);
-	}
+	
 }
 
 void FluidBox::addTracer(glm::vec2 pos, glm::vec3 color) {
@@ -231,23 +215,49 @@ void FluidBox::addTracer(glm::vec2 pos, glm::vec3 color) {
 	tracers.push_back(Tracer(pos, color));
 }
 
-void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color) {
+void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float radius) {
 	if (constrain(pos, 0, size - 1)) {
 		return;
 	}
 
-	density[0][pos.y][pos.x] += amount * color.x / 255.0f;
-	density[1][pos.y][pos.x] += amount * color.y / 255.0f;
-	density[2][pos.y][pos.x] += amount * color.z / 255.0f;
+	std::cout << "density added: " << glm::to_string(amount * color) << std::endl;
+
+	div->bind();
+	div->clear();
+	addShader->use();
+
+	density->useTex();
+	addShader->setVec2("point", pos * (1.0f / size));
+	addShader->setVec3("density", color * amount * (1.0f / 255));
+	addShader->setFloat("radius", radius * (1.0f / size));
+
+	Quad::render();
+
+	density->bind();
+	copyShader->use();
+	div->useTex();
+
+	Quad::render();
+
+	density->unbind();
 }
 
-void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount) {
+void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount, float radius) {
 	if (constrain(pos, 1, size - 2)) {
 		return;
 	}
 
-	velocity->getXList()[pos.y][pos.x] += amount.x;
-	velocity->getYList()[pos.y][pos.x] += amount.y;
+	velocity->bind();
+	addShader->use();
+
+	velocity->useTex();
+	addShader->setVec2("point", pos * (1.0f / size));
+	addShader->setVec3("density", glm::vec3(pos.x, pos.y, 0.0f));
+	addShader->setFloat("radius", radius * (1.0f / size));
+
+	Quad::render();
+
+	velocity->unbind();
 }
 
 void FluidBox::freezeVelocity()
@@ -275,19 +285,21 @@ void FluidBox::recalculateRenderBoxes()
 	float texel = 1.0f / size;
 
 	// Set interior (Leave 1 texel border excluded)
-	float pos = 1 - texel;
+	// since the frame we are rendering to is 2 units wide to form the 2d square of -1 to 1,
+	// we need to scale the texel offset by 2
+	float texPos = 1 - texel;
+	float pos = 1 - 2 * texel;
 
 	float newInterior[] = {
-		// positions
-		-pos,  pos,
-		-pos, -pos,
-		 pos,  pos,
-		 pos, -pos
+		// positions // textures
+		-pos,  pos, texel, texPos,
+		-pos, -pos, texel, texel,
+		 pos,  pos, texPos, texPos,
+		 pos, -pos, texPos, texel
 	};
 
-	for (int i = 0; i < 16; i += 4) {
-		interior[i] = newInterior[i / 2];
-		interior[i + 1] = newInterior[i / 2 + 1];
+	for (int i = 0; i < 16; i ++) {
+		interior[i] = newInterior[i];
 	}
 
 	// Set exterior moving in the order top, right, bottom, left.
@@ -296,39 +308,54 @@ void FluidBox::recalculateRenderBoxes()
 		// top left
 		glm::vec2(-1, 1),
 		// bottom left
-		glm::vec2(-1, 1 - texel),
+		glm::vec2(-1, pos),
 		// top right
 		glm::vec2(1, 1),
 		// bottom right
-		glm::vec2(1, 1 - texel),
+		glm::vec2(1, pos),
+	};
+
+	glm::vec2 texPoints[]{
+		// top left
+		glm::vec2(0, 1),
+		// bottom left
+		glm::vec2(0, texPos),
+		// top right
+		glm::vec2(1, 1),
+		// bottom right
+		glm::vec2(1, texPos),
 	};
 
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			points[j] = rotateND(points[j]);
-			exterior[i][j * 4] = points[j].x;
+			exterior[i][j * 4 + 0] = points[j].x;
 			exterior[i][j * 4 + 1] = points[j].y;
+			exterior[i][j * 4 + 2] = texPoints[j].x;
+			exterior[i][j * 4 + 3] = texPoints[j].y;
 		}
 	}
 }
 
 void FluidBox::renderInterior()
 {
-	Quad::customRender(interior);
+	//Quad::customRender(interior);
 }
 
 void FluidBox::renderExterior(int i)
 {
-	Quad::customRender(exterior[i]);
+	//Quad::customRender(exterior[i]);
 }
 
 void FluidBox::setupShaders()
 {
+	copyShader = new Shader(basicVertexShader, basicFragmentShader);
 	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
 	boundShader = new Shader(basicVertexShader, boundFragmentShader);
 	divShader = new Shader(basicVertexShader, divergenceFragmentShader);
 	gradShader = new Shader(basicVertexShader, gradSubFragmentShader);
 	advectShader = new Shader(basicVertexShader, advectFragmentShader);
+	addShader = new Shader(basicVertexShader, addDensityFragmentShader);
 }
 
 void FluidBox::clear() {
@@ -340,37 +367,15 @@ void FluidBox::clear() {
 }
 
 void FluidBox::fadeDensity(float increment, float min, float max) {
-	int checkInterval = size / 60;
-	float densityMultiplier = 10.0f / 255.0f;
 
-	float avgDensity = 0;
-	for (int y = 0; y < size; y += checkInterval) {
-		for (int x = 0; x < size; x += checkInterval) {
-			for (int i = 0; i < density.size(); i++) {
-				avgDensity += density[i][y][x];
-			}
-		}
-	}
-	avgDensity /= 3 * (size / checkInterval)*(size / checkInterval);
-
-	float densityIncrement = increment * (avgDensity * densityMultiplier);
-
-	for (int y = 0; y < size; y++) {
-		for (int x = 0; x < size; x++) {
-			for (int i = 0; i < density.size(); i++) {
-				density[i][y][x] -= densityIncrement;
-				constrain(density[i][y][x], min, max);
-			}
-		}
-	}
 }
 
 glm::vec3 FluidBox::getColorAtPos(glm::vec2 pos) {
 	glm::vec3 output = glm::vec3(1);
 
-	output.x = density[0][pos.y][pos.x];
-	output.y = density[1][pos.y][pos.x];
-	output.z = density[2][pos.y][pos.x];
+	//output.x = density[0][pos.y][pos.x];
+	//output.y = density[1][pos.y][pos.x];
+	//output.z = density[2][pos.y][pos.x];
 	
 	return output;
 }
