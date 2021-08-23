@@ -220,7 +220,7 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float ra
 		return;
 	}
 
-	std::cout << "density added: " << glm::to_string(amount * color) << std::endl;
+	// std::cout << "density added: " << glm::to_string(amount * color * (1.0f / 255)) << std::endl;
 
 	div->bind();
 	div->clear();
@@ -229,7 +229,7 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float ra
 	density->useTex();
 	addShader->setVec2("point", pos * (1.0f / size));
 	addShader->setVec3("density", color * amount * (1.0f / 255));
-	addShader->setFloat("radius", radius * (1.0f / size));
+	addShader->setFloat("radius", 2 * radius * (1.0f / size));
 
 	Quad::render();
 

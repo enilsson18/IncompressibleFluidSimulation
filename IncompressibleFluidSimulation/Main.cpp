@@ -733,7 +733,7 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 void addMouseSwipeFluid() {
 	// An arbitrary number used for scaling the addition of fluid
 	//float densityMultiplier = 0.05f;
-	float densityMultiplier = 0.001f;
+	float densityMultiplier = 0.05f;
 	float velocityMultiplier = 0.0025f;
 	glm::vec2 scaling = getScalingVec();
 
