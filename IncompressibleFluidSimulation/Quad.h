@@ -21,7 +21,16 @@
 class Quad {
 private:
 	static float defaultVertices[16];
+	static unsigned int defaultIndices[6];
 public:
-	static void render();
-	static void customRender(float* vertices);
+	// Enter True for detailed to increase the rasterization
+	static void render(bool detailed = false);
+	// Follow this pattern for vertices
+	// positions        // texture Coords
+	// -1.0f, 1.0f, 0.0f, 1.0f, // top left
+	// -1.0f, -1.0f, 0.0f, 0.0f, // bottom left
+	//	1.0f, 1.0f, 1.0f, 1.0f, // top right
+	//	1.0f, -1.0f, 1.0f, 0.0f // bottom right
+	// Enter True for detailed to increase the rasterization
+	static void customRender(float* vertices, bool detailed = false);
 };

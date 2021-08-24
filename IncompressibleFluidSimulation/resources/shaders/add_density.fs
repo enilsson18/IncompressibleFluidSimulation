@@ -17,7 +17,7 @@ uniform sampler2D tex;
 void main(){
 	vec3 outColor = vec3(texture(tex, TexCoords));
 
-	if (distance(vec2(gl_FragCoord), point) < 0.1) {
+	if (distance(vec2(gl_FragCoord), point) < 10) {
 		outColor += density;
 	}
 

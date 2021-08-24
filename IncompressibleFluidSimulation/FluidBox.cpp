@@ -227,17 +227,17 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float ra
 	addShader->use();
 
 	density->useTex();
-	addShader->setVec2("point", pos * (1.0f / size));
+	addShader->setVec2("point", pos);
 	addShader->setVec3("density", color * amount * (1.0f / 255));
 	addShader->setFloat("radius", 2 * radius * (1.0f / size));
 
-	Quad::render();
+	Quad::render(false);
 
 	density->bind();
 	copyShader->use();
 	div->useTex();
 
-	Quad::render();
+	Quad::render(false);
 
 	density->unbind();
 }
