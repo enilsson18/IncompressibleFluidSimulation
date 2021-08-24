@@ -27,24 +27,16 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 
 // the main update step
 void FluidBox::update() {
-	if (!velocityFrozen) {
-		// diffuse both dimensions
-		//diffuse(vPrevXList, vXList, 1);
-		//diffuse(vPrevYList, vYList, 2);
+	if (!velocityFrozen && false) {
 		diffuse(velocity);
-		enforceBounds(velocity, -1.0f);
+		//enforceBounds(velocity, -1.0f);
 
-		//advect(1, vPrevXList, vPrevYList, vXList, vPrevXList);
-		//advect(2, vPrevXList, vPrevYList, vYList, vPrevYList);
 		advect(velocity, velocity);
 		enforceBounds(velocity, -1.0f);
 
-		//project(vXList, vYList, vPrevXList, vPrevYList);
 		project(velocity, pressure, div);
 	}
 
-	//diffuse(prevDensity[i], density[i], 0);
-	//advect(0, vXList, vYList, density[i], prevDensity[i]);
 	diffuse(density);
 	advect(velocity, density);
 
@@ -130,15 +122,17 @@ void FluidBox::diffuse(FBO* v) {
 
 	// run jacobi shader
 	v->bind();
-	jacobiShader->use();
-	
-	v->useTex(0);
-	v->useTex(1);
-	jacobiShader->setFloat("rdx", 1.0f / size);
-	jacobiShader->setFloat("a", a);
-	jacobiShader->setFloat("recip", a);
 
-	Quad::render();
+	for (int i = 0; i < divIter; i++) {
+		jacobiShader->use();
+
+		v->useTex(0);
+		jacobiShader->setFloat("rdx", 1.0f / size);
+		jacobiShader->setFloat("a", a);
+		jacobiShader->setFloat("recip", recip);
+
+		Quad::render();
+	}
 
 	v->unbind();
 }
@@ -200,6 +194,9 @@ void FluidBox::advect(FBO* v, FBO* d) {
 	advectShader->setFloat("rdx", 1.0f / size);
 	advectShader->setFloat("dt", dt);
 
+	//renderInterior();
+	Quad::render();
+
 	d->unbind();
 }
 
@@ -227,7 +224,6 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float ra
 
 	density->useTex();
 	addShader->setVec2("point", pos);
-	//addShader->setFloat("texScale", texScale);
 	addShader->setVec3("density", color * amount * (1.0f / 255));
 	addShader->setFloat("radius", radius);
 
@@ -245,9 +241,9 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount, float radius) {
 	addShader->use();
 
 	velocity->useTex();
-	addShader->setVec2("point", pos * (1.0f / size));
+	addShader->setVec2("point", pos);
 	addShader->setVec3("density", glm::vec3(pos.x, pos.y, 0.0f));
-	addShader->setFloat("radius", radius * (1.0f / size));
+	addShader->setFloat("radius", radius);
 
 	Quad::render();
 
@@ -333,12 +329,12 @@ void FluidBox::recalculateRenderBoxes()
 
 void FluidBox::renderInterior()
 {
-	//Quad::customRender(interior);
+	Quad::customRender(interior);
 }
 
 void FluidBox::renderExterior(int i)
 {
-	//Quad::customRender(exterior[i]);
+	Quad::customRender(exterior[i]);
 }
 
 void FluidBox::setupShaders()
@@ -367,6 +363,18 @@ void FluidBox::setTexScale(float scale)
 
 void FluidBox::fadeDensity(float increment, float min, float max) {
 
+}
+
+void FluidBox::copyTo(FBO* f1, FBO* f2)
+{
+	f2->bind();
+	copyShader->use();
+
+	f1->useTex();
+
+	Quad::render();
+
+	f2->unbind();
 }
 
 glm::vec3 FluidBox::getColorAtPos(glm::vec2 pos) {

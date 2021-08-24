@@ -128,6 +128,9 @@ public:
 	void updateTracers();
 
 	void fadeDensity(float increment, float min, float max);
+	
+	// copy f2 into f1
+	void copyTo(FBO* f1, FBO* f2);
 
 	void addTracer(glm::vec2 pos, glm::vec3 color);
 	// Enter the pos in terms of a coordinate grid with the size of the resolution

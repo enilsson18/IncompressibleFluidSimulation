@@ -291,10 +291,9 @@ void draw() {
 	//glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	scaleCopy.use();
+	renderToQuad.use();
 	fluid->density->useTex();
-
-	scaleCopy.setFloat("scale", 1);
+	//fluid->velocity->useTex();
 
 	Quad::render();
 }
@@ -336,7 +335,7 @@ void updateFrame(FPSCounter& timer) {
 
 	// update frame
 	if (!freeze) {
-		//fluid->update();
+		fluid->update();
 		fluid->fadeDensity(0.05f, 0, 255);
 	}
 
@@ -743,7 +742,7 @@ void addMouseSwipeFluid() {
 	float mouseDiff = glm::length((mouse.currentPos - mouse.lastPos) * scaling);
 
 	// solve for parameters of directional fluid
-	int brushSize = 10;
+	int brushSize = 30;
 	float densityInc = densityMultiplier * mouseDiff;
 	float velocityInc = velocityMultiplier * mouseDiff;
 	glm::vec2 position = mouse.currentPos * scaling;
