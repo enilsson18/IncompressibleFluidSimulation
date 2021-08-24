@@ -227,7 +227,7 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float ra
 
 	density->useTex();
 	addShader->setVec2("point", pos);
-	addShader->setFloat("texScale", texScale);
+	//addShader->setFloat("texScale", texScale);
 	addShader->setVec3("density", color * amount * (1.0f / 255));
 	addShader->setFloat("radius", radius);
 

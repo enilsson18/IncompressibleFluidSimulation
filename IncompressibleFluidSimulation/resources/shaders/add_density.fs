@@ -23,8 +23,8 @@ void main(){
 
 	if (distance(frag, point) < radius) {
 	//if (frag.x < 0.9) {
-		outColor += density;
-		//outColor = vec3(1);
+		//outColor += density;
+		outColor = vec3(1);
 	}
 
 	//outColor = density;

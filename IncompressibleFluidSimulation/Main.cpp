@@ -25,8 +25,7 @@
 using namespace std;
 
 // settings
-int resolution = 150;
-double fps = 60;
+//int resolution = 300;
 
 // control settings
 bool enableTracers = false;
@@ -242,8 +241,7 @@ void setup() {
 	}
 
 	// init fluid (since it uses the glfw, it must be made after the glfw instance)
-	fluid = new FluidBox(resolution, 0.0f, 0.0000001f, 0.4f);
-	fluid->setTexScale(float(SCR_WIDTH) / fluid->size);
+	fluid = new FluidBox(SCR_WIDTH, 0.0f, 0.0000001f, 0.4f);
 
 	// main graphics setup
 	renderToQuad = Shader("resources/shaders/render_quad.vs", "resources/shaders/render_quad.fs");
@@ -251,19 +249,11 @@ void setup() {
 
 	blur = new BlurGL(SCR_WIDTH, SCR_HEIGHT);
 	setupBlurFBO();
-
-	// setup fluid render stuff
-	renderFluid = new RenderObject();
-	renderFluid->shader = Shader("resources/shaders/point_render.vs", "resources/shaders/point_render.fs", "resources/shaders/point_render.gs");
-	renderFluid->allocateMemory((resolution * resolution) * (2 + 3));
-
-	updateData(*fluid, renderFluid->data);
-	updateBuffers(renderFluid);
 }
 
 void bindBase() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 }
 
 void setupBlurFBO() {
@@ -301,8 +291,10 @@ void draw() {
 	//glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	renderToQuad.use();
+	scaleCopy.use();
 	fluid->density->useTex();
+
+	scaleCopy.setFloat("scale", 1);
 
 	Quad::render();
 }
@@ -402,7 +394,6 @@ int main() {
 	}
 
 	glfwTerminate();
-	delete[] renderFluid->data;
 
 	return 0;
 }
@@ -503,6 +494,7 @@ bool processCommand(string command) {
 				}
 			}
 
+			/*
 			if (list[1] == "resolution" || list[1] == "res") {
 				if (list.size() > 2) {
 					float num;
@@ -523,6 +515,7 @@ bool processCommand(string command) {
 					return true;
 				}
 			}
+			*/
 
 			if (list[1] == "dt") {
 				if (list.size() > 2) {
@@ -613,10 +606,12 @@ bool processCommand(string command) {
 				return true;
 			}
 
+			/*
 			if (list[1] == "resolution" || list[1] == "res") {
 				std::cout << "Resolution: " << resolution << std::endl;
 				return true;
 			}
+			*/
 
 			if (list[1] == "dt") {
 				std::cout << "dt: " << fluid->dt << std::endl;
@@ -780,105 +775,13 @@ void addDirectionalFluid(FluidBox& fluid, int brushSize, float densityInc, float
 	}
 }
 
-void updateData(FluidBox &fluidBox, float* data) {
-	int index = 0;
-
-	for (int y = 0; y < fluidBox.size; y++) {
-		for (int x = 0; x < fluidBox.size; x++) {
-			data[index] = float(x) / fluidBox.size;
-			data[index + 1] = float(y) / fluidBox.size;
-
-			//data[index + 2] = 0;
-			//data[index + 3] = 0;
-			//data[index + 4] = 0;
-			
-			//float color = (fluidBox.density[y][x] / 255.0f);
-			//data[index + 2] = color;
-			//data[index + 3] = color;
-			//data[index + 4] = color;
-
-			// get color from the rgb density maps in the fluid sim
-			glm::vec3 color = fluidBox.getColorAtPos(glm::vec2(x,y));
-			data[index + 2] = color.x;
-			data[index + 3] = color.y;
-			data[index + 4] = color.z;
-
-			//float alpha = fluidBox.density[y][x] / 255.0f;
-			//glm::vec3 color = alpha * fluidBox.getColorAtPos(glm::vec2(x, y));
-			//data[index + 2] = color.x/255;
-			//data[index + 3] = color.y/255;
-			//data[index + 4] = color.z/255;
-
-			//data[index + 2] = fluidBox.density[y][x] / 255.0f;
-			//data[index + 3] = 1000 * abs(fluidBox.velocity->getXList()[y][x]) / 255.0f;
-			//data[index + 4] = 1000 * abs(fluidBox.velocity->getYList()[y][x]) / 255.0f;
-
-			//data[index + 2] = std::fmod(fluidBox.density[y][x] + 50, 200.0f) / 255.0f;
-			//data[index + 3] = 200 / 255.0f;
-			//data[index + 4] = fluidBox.density[y][x] / 255.0f;
-			index += 5;
-		}
-	}
-
-	// override color if a tracer is there
-	if (enableTracers) {
-		std::vector<Tracer> tracers = fluidBox.getTracers();
-
-		for (int i = 0; i < tracers.size(); i++) {
-			int x = tracers[i].pos.x;
-			int y = tracers[i].pos.y;
-
-			for (int iy = -tracerRadius; iy <= tracerRadius; iy++) {
-				for (int ix = -tracerRadius; ix <= tracerRadius; ix++) {
-					int newX = x + ix;
-					int newY = y + iy;
-
-					if (newX >= 0 && newX < resolution && newY >= 0 && newY < resolution) {
-						float length = glm::length(glm::vec2(ix, iy));
-
-						if (length <= tracerRadius) {
-							int index = (newY * (fluidBox.size) + newX) * 5;
-
-							float power = length / 2.0f;
-
-							if (power == 0) {
-								power = 1;
-							}
-
-							data[index + 2] = tracers[i].color.x * power;
-							data[index + 3] = tracers[i].color.y * power;
-							data[index + 4] = tracers[i].color.z * power;
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-void updateBuffers(RenderObject* renderObject) {
-	glBindVertexArray(renderObject->VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, renderObject->VBO);
-	glBufferData(GL_ARRAY_BUFFER, ((resolution * resolution) * (2 + 3))*sizeof(float), renderObject->data, GL_STATIC_DRAW);
-
-	// position
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	// color
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
-
-	glBindVertexArray(0);
-}
-
 void incrementColorIndex() {
 	colorIndex = (colorIndex + colorInc) % colorSpectSize;
 }
 
 glm::vec2 getScalingVec() {
 	//std::cout << glm::to_string(glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT)) << std::endl;
-	return glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
+	return glm::vec2(float(fluid->size) / SCR_WIDTH, float(fluid->size) / SCR_HEIGHT);
 	//return glm::vec2(0.01f);
 }
 
