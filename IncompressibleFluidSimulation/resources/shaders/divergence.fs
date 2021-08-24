@@ -13,10 +13,10 @@ uniform sampler2D tex;
 vec4 divergence(sampler2D tex, vec2 coords, float rdx){
 	return (
 		0.5 * rdx * (
-			  texture(tex, coords + rdx * vec2(0, 1))
-			- texture(tex, coords + rdx * vec2(0, -1))
-			+ texture(tex, coords + rdx * vec2(1, 0))
-			- texture(tex, coords + rdx * vec2(-1, 0))
+			  texture(tex, coords + vec2(0, 1))
+			- texture(tex, coords + vec2(0, -1))
+			+ texture(tex, coords + vec2(1, 0))
+			- texture(tex, coords + vec2(-1, 0))
 		)
 	);
 }

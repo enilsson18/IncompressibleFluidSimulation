@@ -11,8 +11,8 @@ FBO::FBO(int width, int height)
 
 unsigned int & FBO::createFBO(int width, int height)
 {
-	// set up the render buffer so that the texture copy to and not render to
 	/*
+	// set up the render buffer so that the texture copy to and not render to
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_COLOR_ATTACHMENT0, width, height);
@@ -42,13 +42,12 @@ unsigned int & FBO::createFBO(int width, int height)
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 
-	glViewport(0, 0, width, height);
+	bind();
 
 	// clear the buffer
 	clear();
 
-	// unbind
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	unbind();
 
 	return fbo;
 }
@@ -61,6 +60,7 @@ void FBO::clear(glm::vec3 color) {
 void FBO::bind()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	//glViewport(0, 0, width, height);
 }
 
 void FBO::unbind()

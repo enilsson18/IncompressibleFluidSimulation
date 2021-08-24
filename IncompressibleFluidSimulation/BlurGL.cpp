@@ -97,6 +97,8 @@ unsigned int &BlurGL::process(int width, int height, unsigned int &inputTex,int 
 	//render the current information to a quad and then send that data to the shader
 	//x axis
 	glBindFramebuffer(GL_FRAMEBUFFER, FBOX);
+	glViewport(0, 0, width, height);
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	shader.use();

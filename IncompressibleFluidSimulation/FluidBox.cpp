@@ -222,22 +222,16 @@ void FluidBox::addDensity(glm::vec2 pos, float amount, glm::vec3 color, float ra
 
 	// std::cout << "density added: " << glm::to_string(amount * color * (1.0f / 255)) << std::endl;
 
-	div->bind();
-	div->clear();
+	density->bind();
 	addShader->use();
 
 	density->useTex();
 	addShader->setVec2("point", pos);
+	addShader->setFloat("texScale", texScale);
 	addShader->setVec3("density", color * amount * (1.0f / 255));
-	addShader->setFloat("radius", 2 * radius * (1.0f / size));
+	addShader->setFloat("radius", radius);
 
-	Quad::render(false);
-
-	density->bind();
-	copyShader->use();
-	div->useTex();
-
-	Quad::render(false);
+	Quad::render();
 
 	density->unbind();
 }
@@ -364,6 +358,11 @@ void FluidBox::clear() {
 	this->tracers = vector<Tracer>();
 	this->velocity = new FBO(size, size);
 	this->div = new FBO(size, size);
+}
+
+void FluidBox::setTexScale(float scale)
+{
+	texScale = scale;
 }
 
 void FluidBox::fadeDensity(float increment, float min, float max) {

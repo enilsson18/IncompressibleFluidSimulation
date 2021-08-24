@@ -77,6 +77,8 @@ public:
 	float visc;
 	float divIter;
 
+	float texScale;
+
 	int updateCount = 0;
 
 	bool velocityFrozen;
@@ -155,6 +157,8 @@ public:
 
 	// clears the density and velocity map
 	void clear();
+
+	void setTexScale(float scale);
 
 	glm::vec3 getColorAtPos(glm::vec2 pos);
 

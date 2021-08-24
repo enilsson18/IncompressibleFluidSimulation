@@ -161,6 +161,7 @@ GLFWwindow* window;
 FluidBox* fluid;
 RenderObject* renderFluid;
 
+Shader scaleCopy;
 Shader renderToQuad;
 Shader textoQuad;
 
@@ -242,9 +243,11 @@ void setup() {
 
 	// init fluid (since it uses the glfw, it must be made after the glfw instance)
 	fluid = new FluidBox(resolution, 0.0f, 0.0000001f, 0.4f);
+	fluid->setTexScale(float(SCR_WIDTH) / fluid->size);
 
 	// main graphics setup
 	renderToQuad = Shader("resources/shaders/render_quad.vs", "resources/shaders/render_quad.fs");
+	scaleCopy = Shader("resources/shaders/render_quad.vs", "resources/shaders/scale_copy.fs");
 
 	blur = new BlurGL(SCR_WIDTH, SCR_HEIGHT);
 	setupBlurFBO();
@@ -256,6 +259,11 @@ void setup() {
 
 	updateData(*fluid, renderFluid->data);
 	updateBuffers(renderFluid);
+}
+
+void bindBase() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 }
 
 void setupBlurFBO() {
@@ -284,15 +292,13 @@ void setupBlurFBO() {
 	//bind the buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, toBlurFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, toBlur, 0);
-	glEnable(GL_DEPTH_TEST);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void draw() {
+	bindBase();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	//glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	renderToQuad.use();
@@ -308,7 +314,8 @@ void drawToBlur() {
 	}
 
 	// draw original output
-	glBindFramebuffer(GL_FRAMEBUFFER, toBlurFBO);
+	bindBase();
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	draw();
@@ -317,7 +324,7 @@ void drawToBlur() {
 	unsigned int blurredOutput = blur->process(SCR_WIDTH, SCR_HEIGHT, toBlur, blurIterations);
 	
 	// render blurred output
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	bindBase();
 
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -870,7 +877,9 @@ void incrementColorIndex() {
 }
 
 glm::vec2 getScalingVec() {
+	//std::cout << glm::to_string(glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT)) << std::endl;
 	return glm::vec2(float(resolution) / SCR_WIDTH, float(resolution) / SCR_HEIGHT);
+	//return glm::vec2(0.01f);
 }
 
 // sinusoidal color function

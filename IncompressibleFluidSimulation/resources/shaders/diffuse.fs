@@ -22,10 +22,10 @@ vec4 diffuse(sampler2D texA, sampler2D texB, vec2 coords, float dt, float diff, 
 	return (
 		recip * texture(texB, coords) + 
 		a * (
-			texture(texA, coords + rdx * vec2(0, 1) +
-			texture(texA, coords + rdx * vec2(0, -1) +
-			texture(texA, coords + rdx * vec2(1, 0) +
-			texture(texA, coords + rdx * vec2(-1, 0)
+			texture(texA, coords + vec2(0, 1) +
+			texture(texA, coords + vec2(0, -1) +
+			texture(texA, coords + vec2(1, 0) +
+			texture(texA, coords + vec2(-1, 0)
 		)
 	);
 }
