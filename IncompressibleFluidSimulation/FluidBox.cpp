@@ -28,13 +28,13 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 // the main update step
 void FluidBox::update() {
 	if (!velocityFrozen && false) {
-		diffuse(velocity);
+		//diffuse(velocity);
 		//enforceBounds(velocity, -1.0f);
 
 		advect(velocity, velocity);
-		enforceBounds(velocity, -1.0f);
+		//enforceBounds(velocity, -1.0f);
 
-		project(velocity, pressure, div);
+		//project(velocity, pressure, div);
 	}
 
 	diffuse(density);
@@ -157,9 +157,10 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 
 		p->useTex(0);
 		d->useTex(1);
+		jacobiShader->setInt("texCount", 2);
 		jacobiShader->setFloat("rdx", 1.0f / size);
 		jacobiShader->setFloat("a", 1);
-		jacobiShader->setFloat("recip", 4);
+		jacobiShader->setFloat("recip", 1.0f / 4);
 
 		renderInterior();
 	}
@@ -184,6 +185,7 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 }
 
 void FluidBox::advect(FBO* v, FBO* d) {
+	// normal version
 	// run advect shader
 	d->bind();
 	advectShader->use();
@@ -194,8 +196,8 @@ void FluidBox::advect(FBO* v, FBO* d) {
 	advectShader->setFloat("rdx", 1.0f / size);
 	advectShader->setFloat("dt", dt);
 
-	//renderInterior();
-	Quad::render();
+	renderInterior();
+	//Quad::render();
 
 	d->unbind();
 }
@@ -340,12 +342,35 @@ void FluidBox::renderExterior(int i)
 void FluidBox::setupShaders()
 {
 	copyShader = new Shader(basicVertexShader, basicFragmentShader);
+	copyShader->use();
+	copyShader->setTexLocation("tex", 0);
+
 	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
+	jacobiShader->use();
+	jacobiShader->setTexLocation("texA", 0);
+	jacobiShader->setTexLocation("texB", 1);
+
 	boundShader = new Shader(basicVertexShader, boundFragmentShader);
+	boundShader->use();
+	boundShader->setTexLocation("tex", 0);
+
 	divShader = new Shader(basicVertexShader, divergenceFragmentShader);
+	divShader->use();
+	divShader->setTexLocation("tex", 0);
+
 	gradShader = new Shader(basicVertexShader, gradSubFragmentShader);
+	gradShader->use();
+	gradShader->setTexLocation("texA", 0);
+	gradShader->setTexLocation("texB", 1);
+
 	advectShader = new Shader(basicVertexShader, advectFragmentShader);
+	advectShader->use();
+	advectShader->setTexLocation("v", 0);
+	advectShader->setTexLocation("d", 1);
+
 	addShader = new Shader(basicVertexShader, addDensityFragmentShader);
+	addShader->use();
+	addShader->setTexLocation("tex", 0);
 }
 
 void FluidBox::clear() {

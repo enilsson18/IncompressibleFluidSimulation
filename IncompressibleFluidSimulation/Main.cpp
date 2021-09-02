@@ -192,7 +192,7 @@ void setup() {
 	controlMode = ControlMode::MOUSE_SWIPE;
 	freeze = false;
 
-	colorIndex = 0;
+	colorIndex = 1;
 	colorInc = 1;
 	colorSpectSize = 5;
 
@@ -734,8 +734,8 @@ void processControls(GLFWwindow* window, FluidBox& fluid, ControlMode& controlMo
 void addMouseSwipeFluid() {
 	// An arbitrary number used for scaling the addition of fluid
 	//float densityMultiplier = 0.05f;
-	float densityMultiplier = 0.05f;
-	float velocityMultiplier = 0.0025f;
+	float densityMultiplier = 0.005f;
+	float velocityMultiplier = 0.00025f;
 	glm::vec2 scaling = getScalingVec();
 
 	// The distance between the mouse's current pos and its previous pos

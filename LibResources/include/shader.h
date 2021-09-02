@@ -166,6 +166,10 @@ public:
 		glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 	}
 
+	void setTexLocation(const std::string &name, int num) {
+		glUniform1i(glGetUniformLocation(ID, name.c_str()), num);
+	}
+
 private:
 	// utility function for checking shader compilation/linking errors.
 	

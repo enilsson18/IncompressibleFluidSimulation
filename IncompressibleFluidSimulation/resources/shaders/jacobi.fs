@@ -13,22 +13,34 @@ uniform float a;
 // float recip = 1 / (1 + 4 * a);
 uniform float recip;
 
-// tex A is the texture that will be changed and tex B is the previo
-uniform sampler2D tex;
+uniform int texCount = 1;
 
-vec4 jacobi(sampler2D tex, vec2 coords, float rdx, float a, float recip){
+// tex A is the texture that will be changed and tex B is the previous
+uniform sampler2D texA;
+uniform sampler2D texB;
+
+vec4 jacobi(sampler2D texA, sampler2D texB, vec2 coords, float rdx, float a, float recip){
+	vec4 toAdd;
+
+	if (texCount > 1){
+		toAdd = texture(texB, coords);
+	}
+	else {
+		toAdd = texture(texA, coords);
+	}
+
 	return recip * (
-		texture(tex, coords) + 
+		toAdd + 
 		a * (
-			texture(tex, coords + rdx * vec2(0, 1)) +
-			texture(tex, coords + rdx * vec2(0, -1)) +
-			texture(tex, coords + rdx * vec2(1, 0)) +
-			texture(tex, coords + rdx * vec2(-1, 0))
+			texture(texA, coords + rdx * vec2(0, 1)) +
+			texture(texA, coords + rdx * vec2(0, -1)) +
+			texture(texA, coords + rdx * vec2(1, 0)) +
+			texture(texA, coords + rdx * vec2(-1, 0))
 		)
 	);
 }
 
 void main(){
-	FragColor = vec4(vec3(jacobi(tex, TexCoords, rdx, a, recip)), 1.0);
+	FragColor = vec4(vec3(jacobi(texA, texB, TexCoords, rdx, a, recip)), 1.0);
 	//FragColor = vec4(vec3(texture(texA, TexCoords + vec2(0.01))), 1.0);
 }
