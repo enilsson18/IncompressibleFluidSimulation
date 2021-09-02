@@ -244,7 +244,7 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount, float radius) {
 
 	velocity->useTex();
 	addShader->setVec2("point", pos);
-	addShader->setVec3("density", glm::vec3(pos.x, pos.y, 0.0f));
+	addShader->setVec3("density", glm::vec3(amount.x, amount.y, 0.0f));
 	addShader->setFloat("radius", radius);
 
 	Quad::render();

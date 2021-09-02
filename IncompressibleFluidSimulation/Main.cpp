@@ -735,7 +735,7 @@ void addMouseSwipeFluid() {
 	// An arbitrary number used for scaling the addition of fluid
 	//float densityMultiplier = 0.05f;
 	float densityMultiplier = 0.005f;
-	float velocityMultiplier = 0.00025f;
+	float velocityMultiplier = 0.0025f;
 	glm::vec2 scaling = getScalingVec();
 
 	// The distance between the mouse's current pos and its previous pos
