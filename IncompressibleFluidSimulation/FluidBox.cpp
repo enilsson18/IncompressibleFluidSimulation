@@ -131,7 +131,8 @@ void FluidBox::diffuse(FBO* v) {
 		jacobiShader->setFloat("a", a);
 		jacobiShader->setFloat("recip", recip);
 
-		Quad::render();
+		//Quad::render();
+		renderInterior();
 	}
 
 	v->unbind();
