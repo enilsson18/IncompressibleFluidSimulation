@@ -27,11 +27,11 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 
 // the main update step
 void FluidBox::update() {
-	if (!velocityFrozen && false) {
+	if (!velocityFrozen) {
 		//diffuse(velocity);
 		//enforceBounds(velocity, -1.0f);
 
-		advect(velocity, velocity);
+		//advect(velocity, velocity);
 		//enforceBounds(velocity, -1.0f);
 
 		//project(velocity, pressure, div);
@@ -131,8 +131,8 @@ void FluidBox::diffuse(FBO* v) {
 		jacobiShader->setFloat("a", a);
 		jacobiShader->setFloat("recip", recip);
 
-		//Quad::render();
-		renderInterior();
+		Quad::render();
+		//renderInterior();
 	}
 
 	v->unbind();
@@ -147,7 +147,7 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	v->useTex();
 	divShader->setFloat("rdx", 1.0f / size);
 
-	renderInterior();
+	Quad::render();
 
 	// run jacobi shader on pressure map with the new divergence
 	p->bind();
@@ -163,7 +163,7 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 		jacobiShader->setFloat("a", 1);
 		jacobiShader->setFloat("recip", 1.0f / 4);
 
-		renderInterior();
+		Quad::render();
 	}
 
 	// contain the pressure
@@ -201,6 +201,29 @@ void FluidBox::advect(FBO* v, FBO* d) {
 	//Quad::render();
 
 	d->unbind();
+
+	/*
+	div->bind();
+	advectShader->use();
+
+	v->useTex(0);
+	d->useTex(1);
+
+	advectShader->setFloat("rdx", 1.0f / size);
+	advectShader->setFloat("dt", dt);
+
+	//renderInterior();
+	Quad::render();
+
+	d->bind();
+	copyShader->use();
+
+	div->useTex();
+
+	Quad::render();
+
+	d->unbind();
+	*/
 }
 
 void FluidBox::updateTracers() {
@@ -245,7 +268,7 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount, float radius) {
 
 	velocity->useTex();
 	addShader->setVec2("point", pos);
-	addShader->setVec3("density", glm::vec3(amount.x, amount.y, 0.0f));
+	addShader->setVec3("density", glm::vec3((amount.x) + 0.5f, (amount.y) + 0.5f, 0.0f));
 	addShader->setFloat("radius", radius);
 
 	Quad::render();
