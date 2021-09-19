@@ -22,11 +22,14 @@ vec2 floorVec2To(vec2 vector, float inc){
 }
 
 vec4 advect(sampler2D v, sampler2D d, vec2 coords, float dt, float rdx) {
-	coords = gl_FragCoord.xy * rdx;
+	//vec2 coords2 = gl_FragCoord.xy * rdx;
 
 	float rRDX = 1 / rdx;
 
-	vec2 pos = coords * rRDX - dt * (vec2(texture(v, coords)) - vec2(0.5));
+	vec2 pos = (coords * rRDX - dt * 10 * (texture(v, coords).xy - vec2(0.5)));
+
+	//return vec4(coords, 0, 0);
+	//return vec4((texture(v, coords).xy - vec2(0.5)), 0.0, 1.0);
 
 	// weight each neighboring texel based on how close it is to the downstream position
 	float i0 = floor(pos.x);

@@ -268,7 +268,7 @@ void FluidBox::addVelocity(glm::vec2 pos, glm::vec2 amount, float radius) {
 
 	velocity->useTex();
 	addShader->setVec2("point", pos);
-	addShader->setVec3("density", glm::vec3((amount.x) + 0.5f, (amount.y) + 0.5f, 0.0f));
+	addShader->setVec3("density", glm::vec3((amount.x), (amount.y), 0.0f));
 	addShader->setFloat("radius", radius);
 
 	Quad::render();
@@ -402,6 +402,9 @@ void FluidBox::clear() {
 	this->density = new FBO(size, size);
 	this->tracers = vector<Tracer>();
 	this->velocity = new FBO(size, size);
+	this->velocity->bind();
+	this->velocity->clear(glm::vec3(0.5f));
+	this->velocity->unbind();
 	this->div = new FBO(size, size);
 }
 
