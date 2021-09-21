@@ -294,6 +294,8 @@ void draw() {
 	renderToQuad.use();
 	fluid->density->useTex();
 	//fluid->velocity->useTex();
+	//fluid->div->useTex();
+	//fluid->pressure->useTex();
 
 	Quad::render();
 }

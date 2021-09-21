@@ -28,13 +28,13 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 // the main update step
 void FluidBox::update() {
 	if (!velocityFrozen) {
-		//diffuse(velocity);
-		//enforceBounds(velocity, -1.0f);
+		diffuse(velocity);
+		enforceBounds(velocity, -1.0f, true);
 
-		//advect(velocity, velocity);
-		//enforceBounds(velocity, -1.0f);
+		advect(velocity, velocity);
+		enforceBounds(velocity, -1.0f, true);
 
-		//project(velocity, pressure, div);
+		project(velocity, pressure, div);
 	}
 
 	diffuse(density);
@@ -92,10 +92,10 @@ void FluidBox::resetSize(int size) {
 	*/
 }
 
-void FluidBox::enforceBounds(FBO* x, float scale) {
+void FluidBox::enforceBounds(FBO* x, float scale, bool useHalf) {
 	x->bind();
 
-	float texel = 1.0f / size;
+	float rdx = 1.0f / size;
 
 	glm::vec2 offsetList[4] = {
 		glm::vec2(0, -1),
@@ -107,8 +107,15 @@ void FluidBox::enforceBounds(FBO* x, float scale) {
 	for (int i = 0; i < 4; i++) {
 		boundShader->use();
 		x->useTex();
+
+		if (useHalf) {
+			boundShader->setInt("useHalf", 1);
+		}
+		else {
+			boundShader->setInt("useHalf", 0);
+		}
 		boundShader->setFloat("scale", scale);
-		boundShader->setVec2("offset", offsetList[i] * texel);
+		boundShader->setVec2("offset", offsetList[i] * rdx);
 
 		renderExterior(i);
 	}
@@ -127,6 +134,7 @@ void FluidBox::diffuse(FBO* v) {
 		jacobiShader->use();
 
 		v->useTex(0);
+		jacobiShader->setInt("texCount", 1);
 		jacobiShader->setFloat("rdx", 1.0f / size);
 		jacobiShader->setFloat("a", a);
 		jacobiShader->setFloat("recip", recip);
@@ -147,7 +155,7 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	v->useTex();
 	divShader->setFloat("rdx", 1.0f / size);
 
-	Quad::render();
+	renderInterior();
 
 	// run jacobi shader on pressure map with the new divergence
 	p->bind();
@@ -163,8 +171,9 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 		jacobiShader->setFloat("a", 1);
 		jacobiShader->setFloat("recip", 1.0f / 4);
 
-		Quad::render();
+		renderInterior();
 	}
+	p->unbind();
 
 	// contain the pressure
 	enforceBounds(p, 1.0f);
@@ -180,9 +189,8 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	renderInterior();
 
 	v->unbind();
-
 	// enforce the bounds on the velocity map
-	enforceBounds(v, -1.0f);
+	enforceBounds(v, -1.0f, true);
 }
 
 void FluidBox::advect(FBO* v, FBO* d) {
@@ -371,6 +379,7 @@ void FluidBox::setupShaders()
 
 	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
 	jacobiShader->use();
+	jacobiShader->setInt("texCount", 1);
 	jacobiShader->setTexLocation("texA", 0);
 	jacobiShader->setTexLocation("texB", 1);
 

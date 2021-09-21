@@ -115,7 +115,7 @@ public:
 
 	void resetSize(int size);
 
-	void enforceBounds(FBO* x, float scale);
+	void enforceBounds(FBO* x, float scale, bool useHalf = false);
 
 	// applies diffusion on the input fbo (normally density or velocity)
 	void diffuse(FBO* v);

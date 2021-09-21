@@ -13,6 +13,17 @@ uniform vec2 offset;
 // the input velocity or pressure map
 uniform sampler2D tex;
 
+// tells whether or not to handle the 0.5 scaling since textures can't have negative numbers.
+uniform int useHalf = 0;
+
 void main(){
-	FragColor = scale * texture(tex, TexCoords * offset);
+	vec4 color = texture(tex, TexCoords + offset);
+
+	if (useHalf == 1){
+		vec4 h = vec4(vec2(0.5), vec2(0));
+		FragColor = (scale * (color - h)) + h;
+	}
+	else {
+		FragColor = scale * color;
+	}
 }

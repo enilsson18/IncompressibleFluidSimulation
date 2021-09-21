@@ -11,12 +11,13 @@ uniform float rdx;
 uniform sampler2D tex;
 
 vec4 divergence(sampler2D tex, vec2 coords, float rdx){
+	// subract to account for veleocity offset
 	return (
 		0.5 * rdx * (
-			  texture(tex, coords + vec2(0, 1))
-			- texture(tex, coords + vec2(0, -1))
-			+ texture(tex, coords + vec2(1, 0))
-			- texture(tex, coords + vec2(-1, 0))
+			  (texture(tex, coords + vec2( 0,  1) * rdx) - vec4(vec2(0.5), 0, 0))
+			- (texture(tex, coords + vec2( 0, -1) * rdx) - vec4(vec2(0.5), 0, 0))
+			+ (texture(tex, coords + vec2( 1,  0) * rdx) - vec4(vec2(0.5), 0, 0))
+			- (texture(tex, coords + vec2(-1,  0) * rdx) - vec4(vec2(0.5), 0, 0))
 		)
 	);
 }
