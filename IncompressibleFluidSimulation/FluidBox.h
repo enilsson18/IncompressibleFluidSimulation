@@ -66,6 +66,7 @@ private:
 	const char* jacobiFragmentShader = "resources/shaders/jacobi.fs";
 	const char* divergenceFragmentShader = "resources/shaders/divergence.fs";
 	const char* gradSubFragmentShader = "resources/shaders/grad_sub.fs";
+	const char* projectFragmentShader = "resources/shaders/project.fs";
 	const char* advectFragmentShader = "resources/shaders/advect.fs";
 	const char* addDensityFragmentShader = "resources/shaders/add_density.fs";
 
@@ -89,6 +90,7 @@ public:
 	Shader* jacobiShader;
 	Shader* divShader;
 	Shader* gradShader;
+	Shader* projectShader;
 	Shader* advectShader;
 	Shader* addShader;
 

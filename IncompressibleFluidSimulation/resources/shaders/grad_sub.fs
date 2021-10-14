@@ -14,14 +14,14 @@ uniform sampler2D texA;
 uniform sampler2D texB;
 
 vec4 gradSub(sampler2D texA, sampler2D texB, vec2 coords, float rdx){
-	float t = texture(texB, coords + vec2(0, 1) * rdx).x;
-	float b = texture(texB, coords + vec2(0, -1) * rdx).x;
-	float r = texture(texB, coords + vec2(1, 0) * rdx).x;
-	float l = texture(texB, coords + vec2(-1, 0) * rdx).x;
+	float t = (texture(texB, coords + vec2(0, 1) * rdx).x - 0.5);
+	float b = (texture(texB, coords + vec2(0, -1) * rdx).x - 0.5);
+	float r = (texture(texB, coords + vec2(1, 0) * rdx).x - 0.5);
+	float l = (texture(texB, coords + vec2(-1, 0) * rdx).x - 0.5);
 
 	vec4 currentVelocity = texture(texA, coords);
 
-	return currentVelocity - 0.5f * rdx * vec4(r - l, t - b, 0, 0);
+	return currentVelocity - 0.1 * 0.5 * vec4(r - l, t - b, 0, 0);
 }
 
 void main(){

@@ -29,10 +29,10 @@ FluidBox::FluidBox(int size, float diffusion, float viscosity, float dt) {
 void FluidBox::update() {
 	if (!velocityFrozen) {
 		diffuse(velocity);
-		enforceBounds(velocity, -1.0f, true);
+		//enforceBounds(velocity, -1.0f, true);
 
 		advect(velocity, velocity);
-		enforceBounds(velocity, -1.0f, true);
+		//enforceBounds(velocity, -1.0f, true);
 
 		project(velocity, pressure, div);
 	}
@@ -135,6 +135,8 @@ void FluidBox::diffuse(FBO* v) {
 
 		v->useTex(0);
 		jacobiShader->setInt("texCount", 1);
+		jacobiShader->setFloat("bScale", 1.0f);
+		jacobiShader->setFloat("addFactor", 0.0f);
 		jacobiShader->setFloat("rdx", 1.0f / size);
 		jacobiShader->setFloat("a", a);
 		jacobiShader->setFloat("recip", recip);
@@ -162,21 +164,20 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	p->clear(); // reset image to blank state
 
 	for (int i = 0; i < divIter; i++) {
-		jacobiShader->use();
+		projectShader->use();
 
 		p->useTex(0);
 		d->useTex(1);
-		jacobiShader->setInt("texCount", 2);
-		jacobiShader->setFloat("rdx", 1.0f / size);
-		jacobiShader->setFloat("a", 1);
-		jacobiShader->setFloat("recip", 1.0f / 4);
+		projectShader->setFloat("rdx", 1.0f / size);
+		projectShader->setFloat("a", 1);
+		projectShader->setFloat("recip", 1.0f / 4);
 
 		renderInterior();
 	}
 	p->unbind();
 
 	// contain the pressure
-	enforceBounds(p, 1.0f);
+	//enforceBounds(p, 1.0f);
 
 	// apply gradient subtraction to the velocity map
 	v->bind();
@@ -185,12 +186,13 @@ void FluidBox::project(FBO* v, FBO* p, FBO* d) {
 	v->useTex(0);
 	p->useTex(1);
 	gradShader->setFloat("rdx", 1.0f / size);
+	gradShader->setFloat("bScale", 1.0f);
 
 	renderInterior();
 
 	v->unbind();
 	// enforce the bounds on the velocity map
-	enforceBounds(v, -1.0f, true);
+	//enforceBounds(v, -1.0f, true);
 }
 
 void FluidBox::advect(FBO* v, FBO* d) {
@@ -379,9 +381,13 @@ void FluidBox::setupShaders()
 
 	jacobiShader = new Shader(basicVertexShader, jacobiFragmentShader);
 	jacobiShader->use();
-	jacobiShader->setInt("texCount", 1);
 	jacobiShader->setTexLocation("texA", 0);
 	jacobiShader->setTexLocation("texB", 1);
+
+	projectShader = new Shader(basicVertexShader, projectFragmentShader);
+	projectShader->use();
+	projectShader->setTexLocation("texA", 0);
+	projectShader->setTexLocation("texB", 1);
 
 	boundShader = new Shader(basicVertexShader, boundFragmentShader);
 	boundShader->use();
