@@ -292,7 +292,7 @@ void draw() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	renderToQuad.use();
-	fluid->density->useTex();
+	//fluid->density->useTex();
 	//fluid->velocity->useTex();
 	//fluid->div->useTex();
 	//fluid->pressure->useTex();

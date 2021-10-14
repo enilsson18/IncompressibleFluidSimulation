@@ -21,7 +21,7 @@ vec4 gradSub(sampler2D texA, sampler2D texB, vec2 coords, float rdx){
 
 	vec4 currentVelocity = texture(texA, coords);
 
-	return currentVelocity - 0.1 * 0.5 * vec4(r - l, t - b, 0, 0);
+	return currentVelocity - 0.5 * vec4(r - l, t - b, 0, 0);
 }
 
 void main(){

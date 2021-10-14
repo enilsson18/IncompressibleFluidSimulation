@@ -7,18 +7,18 @@ in vec2 TexCoords;
 // single texel size
 uniform float rdx;
 
-// tex A is the texture that will be changed and tex B is the previo
+// tex A is the texture that will be changed and tex B is the previous
 uniform sampler2D tex;
 
 vec4 divergence(sampler2D tex, vec2 coords, float rdx){
 	// subract to account for veleocity offset
 	return (
-		0.5 * (
-			  (texture(tex, coords + vec2( 0,  1) * rdx) - vec4(vec2(0.5), 0, 0))
-			- (texture(tex, coords + vec2( 0, -1) * rdx) - vec4(vec2(0.5), 0, 0))
-			+ (texture(tex, coords + vec2( 1,  0) * rdx) - vec4(vec2(0.5), 0, 0))
-			- (texture(tex, coords + vec2(-1,  0) * rdx) - vec4(vec2(0.5), 0, 0))
-		) + 0.5
+		-0.5 * rdx * (
+			  ((texture(tex, coords + vec2( 0,  1) * rdx) - vec4(0.5) / 0.1, 0, 0))
+			- ((texture(tex, coords + vec2( 0, -1) * rdx) - vec4(0.5) / 0.1, 0, 0))
+			+ ((texture(tex, coords + vec2( 1,  0) * rdx) - vec4(0.5) / 0.1, 0, 0))
+			- ((texture(tex, coords + vec2(-1,  0) * rdx) - vec4(0.5) / 0.1, 0, 0))
+		) + vec4(0.5)
 	);
 }
 
